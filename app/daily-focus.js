@@ -1,14 +1,61 @@
+function executionStateFor(item, generatedFor) {
+  return item.daily_focus_state && item.daily_focus_state.date === generatedFor
+    ? item.daily_focus_state
+    : null;
+}
+
+function executionHistory(item) {
+  return Array.isArray(item.daily_focus_history) ? item.daily_focus_history : [];
+}
+
+function executionPattern(item) {
+  const history = executionHistory(item).slice(-30);
+  const counts = history.reduce((result, entry) => {
+    const status = String(entry?.status || "");
+    if (status === "Completed") result.completed += 1;
+    if (status === "Blocked") result.blocked += 1;
+    if (status === "Deferred") result.deferred += 1;
+    return result;
+  }, { completed: 0, blocked: 0, deferred: 0 });
+  const friction = counts.blocked + counts.deferred;
+  let signal = "Normal";
+  if (counts.blocked >= 3) signal = "Recurring blocker";
+  else if (counts.deferred >= 3) signal = "Repeatedly deferred";
+  else if (friction >= 4) signal = "Execution friction";
+  else if (counts.completed >= 5 && friction === 0) signal = "Reliable finisher";
+  return { ...counts, samples: history.length, friction, signal };
+}
+
+function buildExecutionLearning(queue = []) {
+  const patterns = (Array.isArray(queue) ? queue : [])
+    .filter(item => item && item.status !== "Killed")
+    .map(item => ({ id: item.id, name: item.name, status: item.status, ...executionPattern(item) }));
+  const blocked = patterns.filter(item => item.blocked >= 2).sort((a, b) => b.blocked - a.blocked || b.friction - a.friction);
+  const deferred = patterns.filter(item => item.deferred >= 2).sort((a, b) => b.deferred - a.deferred || b.friction - a.friction);
+  const completed = patterns.reduce((sum, item) => sum + item.completed, 0);
+  const friction = patterns.reduce((sum, item) => sum + item.friction, 0);
+  const total = completed + friction;
+  return {
+    patterns,
+    recurring_blockers: blocked.slice(0, 5),
+    repeated_deferrals: deferred.slice(0, 5),
+    completion_rate: total ? Math.round((completed / total) * 100) : null,
+    recommendation: blocked.length
+      ? `Resolve the recurring blocker on ${blocked[0].name} before giving it another top-three slot.`
+      : deferred.length
+        ? `Re-scope or consciously park ${deferred[0].name}; repeated deferral is consuming planning attention.`
+        : total >= 5
+          ? "Execution history is stable enough to keep the current three-move daily capacity."
+          : "Keep using Today’s Plan; Atlas needs more execution history before changing workload assumptions."
+  };
+}
+
 function buildDailyFocus(queue = [], now = Date.now()) {
   const generated = new Date(now);
   const generatedFor = generated.toISOString().slice(0, 10);
   const source = (Array.isArray(queue) ? queue : [])
     .filter(item => item && item.status !== "Killed")
-    .map(item => {
-      const state = item.daily_focus_state && item.daily_focus_state.date === generatedFor
-        ? item.daily_focus_state
-        : null;
-      return { ...item, execution_state: state };
-    });
+    .map(item => ({ ...item, execution_state: executionStateFor(item, generatedFor), execution_pattern: executionPattern(item) }));
 
   const completedToday = source.filter(item => item.execution_state?.status === "Completed");
   const deferredToday = source.filter(item => item.execution_state?.status === "Deferred");
@@ -18,20 +65,12 @@ function buildDailyFocus(queue = [], now = Date.now()) {
 
   const primary = ranked[0] || null;
   const supporting = ranked.slice(1, 3);
-  const defer = ranked
-    .slice(3)
-    .filter(item => Number(item.work_priority_score || 0) < 60 || ["Researching", "Paused"].includes(item.status))
-    .slice(0, 3)
-    .map(item => ({
-      id: item.id,
-      name: item.name,
-      status: item.status,
-      reason: item.status === "Paused"
-        ? "Paused work should stay parked until its review date unless new evidence changes the case."
-        : Number(item.work_priority_score || 0) < 60
-          ? "Higher-priority work should be completed first."
-          : "Keep this in the queue, but do not let it displace today's top moves."
-    }));
+  const defer = ranked.slice(3).filter(item => Number(item.work_priority_score || 0) < 60 || ["Researching", "Paused"].includes(item.status)).slice(0, 3).map(item => ({
+    id: item.id,
+    name: item.name,
+    status: item.status,
+    reason: item.status === "Paused" ? "Paused work should stay parked until its review date unless new evidence changes the case." : Number(item.work_priority_score || 0) < 60 ? "Higher-priority work should be completed first." : "Keep this in the queue, but do not let it displace today's top moves."
+  }));
 
   const move = item => item ? ({
     id: item.id,
@@ -44,34 +83,25 @@ function buildDailyFocus(queue = [], now = Date.now()) {
     health_label: item.health_label || null,
     execution_status: item.execution_state?.status || "Open",
     execution_note: item.execution_state?.note || "",
-    execution_updated_at: item.execution_state?.updated_at || null
+    execution_updated_at: item.execution_state?.updated_at || null,
+    execution_pattern: item.execution_pattern
   }) : null;
 
   const primaryMove = move(primary);
   const supportingMoves = supporting.map(move);
   const urgentCount = ranked.filter(item => Number(item.work_priority_score || 0) >= 85).length;
+  const learning = buildExecutionLearning(source);
 
   return {
-    generated_at: generated.toISOString(),
-    generated_for: generatedFor,
-    mode: "daily-focus",
+    generated_at: generated.toISOString(), generated_for: generatedFor, mode: "daily-focus",
     capacity_rule: "Finish the primary objective before expanding the work queue; cap the day at three meaningful Atlas moves.",
-    headline: primaryMove
-      ? `${primaryMove.execution_status === "Blocked" ? "Blocked: " : "Today's highest-leverage move is "}${primaryMove.name}.`
-      : completedToday.length || deferredToday.length
-        ? "Today's active Atlas plan is clear."
-        : "No active Atlas opportunities need focus today.",
-    primary_objective: primaryMove,
-    supporting_moves: supportingMoves,
-    defer,
-    completed_today: completedToday.map(move),
-    deferred_today: deferredToday.map(move),
-    queue_size: ranked.length,
-    urgent_count: urgentCount,
-    stop_rule: primaryMove
-      ? "Do not start lower-ranked Atlas work until the primary objective is completed, blocked, or deliberately deferred."
-      : "No Atlas work needs to be forced today."
+    headline: primaryMove ? `${primaryMove.execution_status === "Blocked" ? "Blocked: " : "Today's highest-leverage move is "}${primaryMove.name}.` : completedToday.length || deferredToday.length ? "Today's active Atlas plan is clear." : "No active Atlas opportunities need focus today.",
+    primary_objective: primaryMove, supporting_moves: supportingMoves, defer,
+    completed_today: completedToday.map(move), deferred_today: deferredToday.map(move),
+    queue_size: ranked.length, urgent_count: urgentCount,
+    execution_learning: learning,
+    stop_rule: primaryMove ? "Do not start lower-ranked Atlas work until the primary objective is completed, blocked, or deliberately deferred." : "No Atlas work needs to be forced today."
   };
 }
 
-module.exports = { buildDailyFocus };
+module.exports = { buildDailyFocus, buildExecutionLearning, executionPattern };
