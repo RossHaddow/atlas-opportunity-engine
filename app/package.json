@@ -1,12 +1,12 @@
 {
   "name": "atlas-opportunity-engine",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Atlas personal opportunity engine",
   "scripts": {
-    "start": "node server-build43.js",
+    "start": "node server-build44.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check server-build43.js && node --check storage.js && node --check daily-focus.js && node --check public/daily-focus.js && node --test"
+    "check": "node --check server.js && node --check server-build44.js && node --check storage.js && node --check daily-focus.js && node --check public/daily-focus.js && node --test"
   },
   "engines": {
     "node": ">=22.5"
