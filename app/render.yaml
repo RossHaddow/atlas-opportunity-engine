@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: atlas-opportunity-engine
+    runtime: node
+    plan: starter
+    buildCommand: npm install --ignore-scripts
+    startCommand: npm start
+    healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ATLAS_DATA_DIR
+        value: /var/data
+      - key: ATLAS_BACKUP_LIMIT
+        value: 50
+      - key: ATLAS_REQUIRE_PERSISTENCE
+        value: "true"
+      - key: ATLAS_ACCESS_USERNAME
+        value: atlas
+      - key: ATLAS_REQUIRE_AUTH
+        value: "true"
+      - key: ATLAS_ACCESS_PASSWORD
+        sync: false
+    disk:
+      name: atlas-data
+      mountPath: /var/data
+      sizeGB: 1

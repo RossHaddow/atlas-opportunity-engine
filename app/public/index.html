@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atlas Opportunity Engine</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="dashboard">
+    <header><p class="eyebrow">PERSONAL INTELLIGENCE & OPPORTUNITY SYSTEM</p><h1>ATLAS</h1></header>
+
+    <section id="executive-briefing" class="command-center">
+      <div class="command-header">
+        <div>
+          <p class="eyebrow">DAILY EXECUTIVE BRIEFING</p>
+          <h2 id="commandHeadline">Loading today’s priorities…</h2>
+        </div>
+        <span id="commandUpdated">Updating…</span>
+      </div>
+      <div id="commandKpis" class="command-kpis"></div>
+      <div class="command-grid">
+        <div class="command-panel">
+          <div class="panel-title"><h3>What Needs You</h3><span id="attentionCount">0 open</span></div>
+          <div id="commandAttention" class="command-list"></div>
+        </div>
+        <div class="command-panel">
+          <div class="panel-title"><h3>Next 3 Moves</h3><span>Highest leverage first</span></div>
+          <div id="commandMoves" class="command-list"></div>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="section-heading"><div><p class="eyebrow">OPPORTUNITY ENGINE</p><h2>Portfolio Command Center</h2></div><button id="toggle-form">Add Opportunity</button></div>
+      <div id="metrics" class="metrics"></div>
+      <div id="filters" class="filters"></div>
+      <div class="dashboard-controls"><input id="opportunity-search" type="search" placeholder="Search opportunities"><label>Sort by <select id="opportunity-sort"><option value="attention">Next action</option><option value="score">Atlas score</option><option value="profit">Profit</option><option value="status">Status</option><option value="name">Name</option></select></label></div>
+    </section>
+
+    <section id="testing-portfolio-card" class="card testing-portfolio-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">LIVE PRODUCT TESTS</p><h2>30-Day Test Portfolio</h2></div>
+        <span id="test-portfolio-count"></span>
+      </div>
+      <div id="test-portfolio-metrics" class="test-portfolio-metrics"></div>
+      <div id="test-portfolio-list" class="test-portfolio-list"></div>
+    </section>
+    <section id="attention-card" class="card attention-card"><div class="section-heading"><div><p class="eyebrow">NEEDS ATTENTION</p><h2>Action Queue</h2></div><span id="attention-count"></span></div><div id="attention-list"></div></section>
+    <section id="form-card" class="card hidden">
+      <div class="section-heading"><h2 id="form-title">Add Opportunity</h2><button type="button" class="secondary hidden" id="cancel-edit">Cancel Edit</button></div>
+      <form id="opportunity-form">
+        <input id="name" placeholder="Opportunity name" required>
+        <input id="category" placeholder="Category" required>
+        <textarea id="description" placeholder="Description" required></textarea>
+        <input id="revenue_model" placeholder="Revenue model">
+        <input id="startup_cost" type="number" min="0" step="0.01" placeholder="Startup cost">
+        <input id="setup_time_hours" type="number" min="0" step="0.25" placeholder="Setup time in hours">
+        <select id="ongoing_effort"><option>Low</option><option>Medium</option><option>High</option></select>
+        <select id="risk"><option>Low</option><option>Medium</option><option>High</option></select>
+        <select id="scalability"><option>High</option><option>Medium</option><option>Low</option></select>
+        <input id="confidence" type="number" min="0" max="10" placeholder="Confidence 0-10">
+        <input id="speed_to_revenue" type="number" min="0" max="10" placeholder="Speed to revenue 0-10">
+        <input id="passivity" type="number" min="0" max="10" placeholder="Passivity 0-10">
+        <input id="atlas_fit" type="number" min="0" max="10" placeholder="Atlas fit 0-10">
+        <textarea id="notes" placeholder="Notes"></textarea>
+        <button type="submit" id="opportunity-submit">Save Opportunity</button>
+      </form>
+    </section>
+    <section id="opportunity-list" class="opportunity-list"><div class="card">Loading opportunities...</div></section>
+  </main>
+  <dialog id="experiment-dialog">
+    <form id="experiment-form">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">30-DAY EXPERIMENT</p><h2 id="experiment-title">Testing Workspace</h2></div>
+        <button type="button" class="secondary" id="close-experiment">Close</button>
+      </div>
+      <input type="hidden" id="experiment-opportunity-id">
+      <div id="experiment-alerts"></div>
+      <label class="full">Demand evidence<textarea id="demand_evidence" placeholder="What proves that customers want this type of offer?"></textarea></label>
+      <label class="full">Product or offer<textarea id="offer" placeholder="What exactly is being tested?"></textarea></label>
+      <label>Sales channel<input id="sales_channel" placeholder="Etsy, direct sales, local pilot..."></label>
+      <label>Approved budget<input id="approved_budget" type="number" min="0" step="0.01"></label>
+      <label>Start date<input id="start_date" type="date"></label>
+      <label>End date<input id="end_date" type="date"></label>
+      <label>Total hours worked<input id="hours_worked" type="number" min="0" step="0.25" readonly></label>
+      <label>Total revenue<input id="experiment_revenue" type="number" min="0" step="0.01" readonly></label>
+      <label>Total expenses<input id="experiment_expenses" type="number" min="0" step="0.01" readonly></label>
+      <label class="approval"><input id="budget_approval_confirmed" type="checkbox"> Ross approved spending above $25</label>
+      <fieldset class="full"><legend>Launch tasks</legend><div id="launch-task-list"></div><div class="task-entry"><input id="new-launch-task" placeholder="Add a launch task"><button type="button" id="add-launch-task">Add Task</button></div></fieldset>
+      <fieldset class="full checkpoints-fieldset"><legend>Weekly checkpoints</legend><p class="field-help">Record each week's results. Revenue, expenses, and hours automatically roll up into the experiment totals.</p><div id="checkpoint-tabs"></div><div id="checkpoint-editor"></div></fieldset>
+      <fieldset class="full decision-fieldset"><legend>Day-30 decision</legend>
+        <div id="decision-metrics" class="decision-metrics"></div>
+        <label class="fair-test"><input id="fair_test_exposure_met" type="checkbox"> The opportunity received a fair test with enough qualified exposure</label>
+        <div id="atlas-recommendation" class="recommendation"></div>
+        <div class="decision-grid">
+          <label>Final decision<select id="final_decision"><option>Move to Active</option><option>Revise and Retest</option><option>Pause</option><option>Kill</option></select></label>
+          <label>Decision summary<textarea id="decision_summary" placeholder="What did the experiment prove?"></textarea></label>
+          <label class="full">Override reason<textarea id="override_reason" placeholder="Required only when your decision differs from Atlas's recommendation"></textarea></label>
+        </div>
+        <div class="decision-actions"><span id="decision-status"></span><button type="button" id="finalize-decision">Finalize Decision</button></div>
+      </fieldset>
+      <label class="full">Customer response<textarea id="customer_response" placeholder="Questions, requests, objections, feedback, or sales signals"></textarea></label>
+      <label class="full">Experiment notes<textarea id="experiment_notes" placeholder="Important test context or changes"></textarea></label>
+      <div class="dialog-actions full"><span id="experiment-save-status"></span><button type="submit">Save Testing Workspace</button></div>
+    </form>
+  </dialog>
+  <script src="/app.js"></script>
+</body>
+</html>

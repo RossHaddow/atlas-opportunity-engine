@@ -1,0 +1,14 @@
+{
+  "name": "atlas-opportunity-engine",
+  "version": "1.7.0",
+  "private": true,
+  "description": "Atlas personal opportunity engine",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check storage.js && node --test"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
