@@ -17,7 +17,7 @@ test('dashboard includes the Daily Focus panel and assets', () => {
   assert.match(html, /\/daily-focus\.js/);
 });
 
-test('Daily Focus client loads the Build 41 endpoint and renders core plan sections', () => {
+test('Daily Focus client loads the endpoint and renders core plan sections', () => {
   assert.match(js, /fetch\("\/api\/daily-focus"\)/);
   assert.match(js, /primary_objective/);
   assert.match(js, /supporting_moves/);
@@ -26,7 +26,19 @@ test('Daily Focus client loads the Build 41 endpoint and renders core plan secti
   assert.match(js, /stop_rule/);
 });
 
-test('Daily Focus has responsive styling', () => {
+test('Daily Focus client can persist Completed, Blocked, and Deferred execution states', () => {
+  assert.match(js, /data-focus-status="Completed"/);
+  assert.match(js, /data-focus-status="Blocked"/);
+  assert.match(js, /data-focus-status="Deferred"/);
+  assert.match(js, /method: "PATCH"/);
+  assert.match(js, /\/api\/daily-focus\/\$\{id\}/);
+  assert.match(js, /completed_today/);
+  assert.match(js, /deferred_today/);
+});
+
+test('Daily Focus has responsive styling and execution controls', () => {
   assert.match(css, /daily-focus-grid/);
+  assert.match(css, /daily-focus-controls/);
+  assert.match(css, /is-blocked/);
   assert.match(css, /@media\(max-width:900px\)/);
 });
