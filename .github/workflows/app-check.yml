@@ -1,0 +1,32 @@
+name: Check Atlas Application
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-check.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-check.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Syntax and regression checks
+        run: npm run check
