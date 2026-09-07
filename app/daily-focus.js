@@ -1,6 +1,19 @@
 function buildDailyFocus(queue = [], now = Date.now()) {
-  const ranked = (Array.isArray(queue) ? queue : [])
+  const generated = new Date(now);
+  const generatedFor = generated.toISOString().slice(0, 10);
+  const source = (Array.isArray(queue) ? queue : [])
     .filter(item => item && item.status !== "Killed")
+    .map(item => {
+      const state = item.daily_focus_state && item.daily_focus_state.date === generatedFor
+        ? item.daily_focus_state
+        : null;
+      return { ...item, execution_state: state };
+    });
+
+  const completedToday = source.filter(item => item.execution_state?.status === "Completed");
+  const deferredToday = source.filter(item => item.execution_state?.status === "Deferred");
+  const ranked = source
+    .filter(item => !["Completed", "Deferred"].includes(item.execution_state?.status))
     .sort((a, b) => Number(b.work_priority_score || 0) - Number(a.work_priority_score || 0) || Number(b.atlas_score || 0) - Number(a.atlas_score || 0));
 
   const primary = ranked[0] || null;
@@ -28,25 +41,31 @@ function buildDailyFocus(queue = [], now = Date.now()) {
     action: item.recommendation || "Review opportunity",
     reasons: Array.isArray(item.reasons) ? item.reasons.slice(0, 3) : [],
     due_date: item.next_action_date || null,
-    health_label: item.health_label || null
+    health_label: item.health_label || null,
+    execution_status: item.execution_state?.status || "Open",
+    execution_note: item.execution_state?.note || "",
+    execution_updated_at: item.execution_state?.updated_at || null
   }) : null;
 
   const primaryMove = move(primary);
   const supportingMoves = supporting.map(move);
   const urgentCount = ranked.filter(item => Number(item.work_priority_score || 0) >= 85).length;
-  const generated = new Date(now);
 
   return {
     generated_at: generated.toISOString(),
-    generated_for: generated.toISOString().slice(0, 10),
+    generated_for: generatedFor,
     mode: "daily-focus",
     capacity_rule: "Finish the primary objective before expanding the work queue; cap the day at three meaningful Atlas moves.",
     headline: primaryMove
-      ? `Today's highest-leverage move is ${primaryMove.name}.`
-      : "No active Atlas opportunities need focus today.",
+      ? `${primaryMove.execution_status === "Blocked" ? "Blocked: " : "Today's highest-leverage move is "}${primaryMove.name}.`
+      : completedToday.length || deferredToday.length
+        ? "Today's active Atlas plan is clear."
+        : "No active Atlas opportunities need focus today.",
     primary_objective: primaryMove,
     supporting_moves: supportingMoves,
     defer,
+    completed_today: completedToday.map(move),
+    deferred_today: deferredToday.map(move),
     queue_size: ranked.length,
     urgent_count: urgentCount,
     stop_rule: primaryMove
