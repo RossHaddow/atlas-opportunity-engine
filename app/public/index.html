@@ -5,10 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Atlas Opportunity Engine</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/daily-focus.css">
 </head>
 <body>
   <main class="dashboard">
     <header><p class="eyebrow">PERSONAL INTELLIGENCE & OPPORTUNITY SYSTEM</p><h1>ATLAS</h1></header>
+
+    <section id="daily-focus" class="card daily-focus-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">TODAY'S PLAN</p><h2 id="dailyFocusHeadline">Building today’s focus…</h2></div>
+        <span id="dailyFocusMeta" class="daily-focus-meta">Loading…</span>
+      </div>
+      <div class="daily-focus-grid">
+        <div class="daily-focus-column"><h3>Primary</h3><div id="dailyFocusPrimary"></div></div>
+        <div class="daily-focus-column"><h3>Supporting Moves</h3><div id="dailyFocusSupporting"></div></div>
+        <div class="daily-focus-column"><h3>Defer</h3><div id="dailyFocusDefer"></div></div>
+      </div>
+      <div id="dailyFocusRules" class="daily-focus-rules"></div>
+    </section>
 
     <section id="executive-briefing" class="command-center">
       <div class="command-header">
@@ -105,5 +119,6 @@
     </form>
   </dialog>
   <script src="/app.js"></script>
+  <script src="/daily-focus.js"></script>
 </body>
 </html>
