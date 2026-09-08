@@ -16,6 +16,8 @@ services:
         value: 50
       - key: ATLAS_REQUIRE_PERSISTENCE
         value: "true"
+      - key: ATLAS_TIME_ZONE
+        value: America/Chicago
       - key: ATLAS_ACCESS_USERNAME
         value: atlas
       - key: ATLAS_REQUIRE_AUTH

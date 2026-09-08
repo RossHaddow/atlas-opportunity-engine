@@ -341,6 +341,177 @@ async function loadCommandCenter() {
   if (!response.ok) return;
   renderCommandCenter(await response.json());
 }
+function openIntelligenceTarget(id) {
+  const item = opportunities.find(opportunity => Number(opportunity.id) === Number(id));
+  if (!item) return;
+  if (item.status === "Testing") openExperiment(item.id);
+  else beginEdit(item.id);
+}
+
+async function updateFocus(id, action, days = 1) {
+  const reason = arguments[3] || "";
+  const response = await fetch(`/api/opportunities/${id}/focus`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, days, reason })
+  });
+  const result = await response.json();
+  if (!response.ok) { alert(result.error || "Unable to update focus."); return; }
+  await loadOpportunities();
+}
+
+function renderIntelligenceCommand(data) {
+  const top = data.top_focus;
+  const topFocus = document.getElementById("topFocus");
+  const queue = document.getElementById("intelligenceQueue");
+  if (!topFocus || !queue) return;
+
+  if (!top) {
+    topFocus.innerHTML = '<div class="command-empty"><strong>No active focus.</strong><span>Atlas has no open priorities right now. Completed or deferred work will return automatically when its hold expires.</span></div>';
+    queue.innerHTML = '<div class="command-empty"><strong>Queue clear.</strong><span>Add, reopen, or wait for deferred work to return.</span></div>';
+    return;
+  }
+
+  const reasons = (top.reasons || []).slice(0, 3);
+  const focus = top.focus || { status: "idle" };
+  const active = focus.status === "active";
+  topFocus.innerHTML = `<div class="top-focus-card">
+    <div class="top-focus-score"><strong>${Number(top.work_priority_score || 0)}</strong><span>/100 priority</span></div>
+    <div class="top-focus-body">
+      <div class="top-focus-meta"><span>${escapeHtml(top.status)}</span><span>Atlas score ${Number(top.atlas_score || 0)}</span>${top.health_label ? `<span>${escapeHtml(top.health_label)} test</span>` : ""}${active ? '<span class="focus-active-pill">Focus active</span>' : ""}</div>
+      <h4>${escapeHtml(top.name)}</h4>
+      <p class="top-focus-recommendation">${escapeHtml(top.strategic_recommendation || top.recommendation || "Review opportunity")}</p>
+      ${top.adaptive_next_action?.mode === "micro" ? `<div class="adaptive-next-action"><span>Do next · ${Number(top.adaptive_next_action.estimated_minutes || 15)} min</span><strong>${escapeHtml(top.adaptive_next_action.action)}</strong><small>${escapeHtml(top.adaptive_next_action.reason || "Atlas shrank this action based on recent execution friction.")}</small></div>` : ""}
+      ${reasons.length ? `<ul>${reasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>` : ""}
+      <div class="focus-actions">
+        <button type="button" data-intelligence-open="${top.id}">Open ${top.status === "Testing" ? "Testing Workspace" : "Opportunity"}</button>
+        ${active ? `<button type="button" class="focus-complete" data-focus-complete="${top.id}">Complete for today</button>` : `<button type="button" class="focus-start" data-focus-start="${top.id}">Start focus</button>`}
+        <select class="focus-defer-reason" data-focus-defer-reason="${top.id}" aria-label="Why defer this focus?">
+          <option value="">Defer reason (optional)</option>
+          <option value="timing">Bad timing / not today</option>
+          <option value="capacity">Not enough time / energy</option>
+          <option value="blocked">Blocked / waiting on something</option>
+          <option value="too_big">Action is too big</option>
+          <option value="unclear">Next step is unclear</option>
+          <option value="low_priority">Does not feel worth prioritizing</option>
+          <option value="other">Other</option>
+        </select>
+        <button type="button" class="focus-defer" data-focus-defer="${top.id}">Defer 1 day</button>
+      </div>
+      ${active && focus.started_at ? `<small class="focus-state-note">Started ${new Date(focus.started_at).toLocaleString()}</small>` : ""}
+    </div>
+  </div>`;
+
+  const ranked = (data.intelligence || []).filter(item => Number(item.id) !== Number(top.id)).slice(0, 4);
+  queue.innerHTML = ranked.length ? ranked.map((item, index) => `<button class="intelligence-row" data-intelligence-open="${item.id}">
+    <span class="intelligence-rank">${index + 2}</span>
+    <div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.adaptive_next_action?.mode === "micro" ? item.adaptive_next_action.action : (item.recommendation || "Review opportunity"))}</span></div>
+    <div class="intelligence-row-score"><strong>${Number(item.work_priority_score || 0)}</strong><small>${escapeHtml(item.status)}</small></div>
+  </button>`).join("") : '<div class="command-empty"><strong>No additional priorities.</strong><span>Your top focus is the only active item in the ranked queue.</span></div>';
+
+  document.querySelectorAll("[data-intelligence-open]").forEach(button => button.addEventListener("click", () => openIntelligenceTarget(Number(button.dataset.intelligenceOpen))));
+  document.querySelectorAll("[data-focus-start]").forEach(button => button.addEventListener("click", () => updateFocus(Number(button.dataset.focusStart), "start")));
+  document.querySelectorAll("[data-focus-complete]").forEach(button => button.addEventListener("click", () => updateFocus(Number(button.dataset.focusComplete), "complete")));
+  document.querySelectorAll("[data-focus-defer]").forEach(button => button.addEventListener("click", () => {
+    const id = Number(button.dataset.focusDefer);
+    const reason = document.querySelector(`[data-focus-defer-reason="${id}"]`)?.value || "";
+    updateFocus(id, "defer", 1, reason);
+  }));
+}
+
+function renderFocusReview(data) {
+  const root = document.getElementById("focusReview");
+  if (!root) return;
+  const review = data.focus_execution || { started: 0, completed: 0, deferred: 0, focused_minutes: 0, active: 0, recent: [] };
+  const stats = [
+    ["Started", review.started || 0, review.active ? `${review.active} active now` : "focus sessions"],
+    ["Completed", review.completed || 0, "finished today"],
+    ["Deferred", review.deferred || 0, "moved intentionally"],
+    ["Focused", `${Number(review.focused_minutes || 0)}m`, "tracked session time"]
+  ];
+  const recent = (review.recent || []).slice(0, 5);
+  root.innerHTML = `<div class="focus-review-stats">${stats.map(item => `<div class="focus-review-stat"><span>${escapeHtml(item[0])}</span><strong>${escapeHtml(String(item[1]))}</strong><small>${escapeHtml(item[2])}</small></div>`).join("")}</div>
+    <div class="focus-review-history">${recent.length ? recent.map(item => `<div class="focus-history-row"><div><strong>${escapeHtml(item.opportunity_name || "Opportunity")}</strong><span>${escapeHtml(item.event || "focus")} · ${escapeHtml(item.action || "Review opportunity")}</span></div><small>${item.duration_minutes ? `${Number(item.duration_minutes)}m · ` : ""}${item.defer_reason ? `${escapeHtml(item.defer_reason.replaceAll("_", " "))} · ` : ""}${new Date(item.at).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</small></div>`).join("") : '<div class="focus-history-empty">No focus activity yet today. Start the Top Focus when you begin.</div>'}</div>`;
+}
+
+function renderFocusScorecard(data) {
+  const root = document.getElementById("focusScorecard");
+  if (!root) return;
+  const card = data.focus_scorecard || {};
+  const followThrough = card.follow_through_pct == null ? "—" : `${Number(card.follow_through_pct)}%`;
+  const metrics = [
+    ["Focus days", `${Number(card.active_days || 0)}/${Number(card.window_days || 7)}`, "days with recorded action"],
+    ["Follow-through", followThrough, "completed vs deferred"],
+    ["Focused", `${Number(card.focused_minutes || 0)}m`, "tracked in the last 7 days"],
+    ["Completed", Number(card.completed || 0), `${Number(card.deferred || 0)} deferred`]
+  ];
+  const leaders = (card.top_opportunities || []).slice(0, 4);
+  root.innerHTML = `<div class="focus-scorecard-summary"><div class="focus-scorecard-metrics">${metrics.map(item => `<div class="focus-scorecard-stat"><span>${escapeHtml(item[0])}</span><strong>${escapeHtml(String(item[1]))}</strong><small>${escapeHtml(item[2])}</small></div>`).join("")}</div><div class="focus-signal"><span>Execution signal</span><strong>${escapeHtml(card.signal || "No focus data yet")}</strong><p>${escapeHtml(card.guidance || "Start recording focus sessions so Atlas can learn from execution.")}</p></div></div>
+    <div class="focus-scorecard-leaders"><h4>Where focus went</h4>${leaders.length ? leaders.map(item => `<div class="focus-leader-row"><div><strong>${escapeHtml(item.opportunity_name || "Opportunity")}</strong><span>${Number(item.completed || 0)} completed · ${Number(item.deferred || 0)} deferred</span></div><small>${Number(item.focused_minutes || 0)}m</small></div>`).join("") : '<div class="focus-history-empty">No 7-day focus history yet.</div>'}</div>`;
+}
+
+function renderFocusFriction(data) {
+  const root = document.getElementById("focusFriction");
+  if (!root) return;
+  const friction = data.focus_friction || {};
+  const reasons = (friction.reasons || []).slice(0, 5);
+  const opportunities = (friction.opportunities || []).slice(0, 4);
+  if (!Number(friction.reasoned_deferred || 0)) {
+    root.innerHTML = '<div class="focus-history-empty">No diagnosed friction yet. Defer reasons are optional; choose one when it would help Atlas understand why work moved.</div>';
+    return;
+  }
+  root.innerHTML = `<div class="friction-summary-grid">
+    <div class="friction-signal"><span>Most common friction</span><strong>${escapeHtml(friction.dominant_label || "Mixed")}</strong><p>${Number(friction.reasoned_deferred || 0)} reasoned deferrals in the last ${Number(friction.window_days || 14)} days · ${Number(friction.unclassified_deferred || 0)} unclassified</p></div>
+    <div class="friction-reasons">${reasons.map(item => `<div class="friction-reason-row"><span>${escapeHtml(item.label)}</span><strong>${Number(item.count || 0)}</strong></div>`).join("")}</div>
+  </div>
+  <div class="friction-opportunities">${opportunities.map(item => `<div class="friction-opportunity-row"><div><strong>${escapeHtml(item.name || "Opportunity")}</strong><span>${escapeHtml(item.signal || "Mixed execution friction")}</span><p>${escapeHtml(item.guidance || "")}</p></div><small>${Number(item.reasoned_deferred || 0)} reasoned</small></div>`).join("")}</div>`;
+}
+
+function renderAdaptiveActionLearning(data) {
+  const root = document.getElementById("adaptiveActionLearning");
+  if (!root) return;
+  const learning = data.adaptive_action_learning || {};
+  const micro = learning.micro || {};
+  const standard = learning.standard || {};
+  const pct = value => value == null ? "—" : `${Number(value)}%`;
+  const lift = learning.micro_follow_through_lift_pct;
+  const liftText = lift == null ? "Not comparable yet" : `${lift > 0 ? "+" : ""}${Number(lift)} pts vs standard`;
+  const policy = data.adaptive_action_policy || {};
+  const topStrategy = data.top_focus?.adaptive_strategy || {};
+  const strategyScope = topStrategy.scope_label || (topStrategy.scope === "opportunity" ? "Opportunity-specific evidence" : "Portfolio fallback");
+  const evidence = topStrategy.evidence || data.adaptive_strategy_evidence || {};
+  const stability = topStrategy.stability || {};
+  const stabilityLabel = stability.held ? "Strategy held for stability" : (stability.previous_mode && stability.previous_mode !== stability.candidate_mode ? "Strategy change accepted" : "Strategy stable");
+  const evidenceNeed = [
+    Number(evidence.remaining_micro || 0) ? `${Number(evidence.remaining_micro)} micro` : "",
+    Number(evidence.remaining_standard || 0) ? `${Number(evidence.remaining_standard)} standard` : ""
+  ].filter(Boolean).join(" + ");
+  root.innerHTML = `<div class="adaptive-learning-grid">
+    <div class="adaptive-learning-stat"><span>Micro-actions</span><strong>${pct(micro.follow_through_pct)}</strong><small>${Number(micro.completed || 0)} completed · ${Number(micro.deferred || 0)} deferred</small></div>
+    <div class="adaptive-learning-stat"><span>Standard actions</span><strong>${pct(standard.follow_through_pct)}</strong><small>${Number(standard.completed || 0)} completed · ${Number(standard.deferred || 0)} deferred</small></div>
+    <div class="adaptive-learning-stat"><span>Micro lift</span><strong>${escapeHtml(liftText)}</strong><small>${micro.avg_resolution_minutes == null ? "No timing baseline" : `${Number(micro.avg_resolution_minutes)}m avg resolution`}</small></div>
+    <div class="adaptive-learning-signal"><span>Learning signal</span><strong>${escapeHtml(learning.signal || "Not enough adaptive data")}</strong><p>${escapeHtml(learning.guidance || "Atlas will learn whether smaller actions improve execution as focus history grows.")}</p></div>
+    <div class="adaptive-learning-signal adaptive-policy"><span>Current adaptive strategy · Portfolio</span><strong>${escapeHtml(policy.label || "Learn before changing strategy")}</strong><p>${escapeHtml(policy.guidance || "Atlas will keep learning before changing how it packages recommendations.")}</p></div>
+    <div class="adaptive-learning-signal adaptive-policy"><span>Top Focus strategy · ${escapeHtml(strategyScope)}</span><strong>${escapeHtml(topStrategy.label || policy.label || "Learn before changing strategy")}</strong><p>${escapeHtml(topStrategy.guidance || policy.guidance || "Atlas will keep learning before changing how it packages recommendations.")}</p></div>
+    <div class="adaptive-learning-signal adaptive-evidence"><span>Strategy evidence</span><strong>${escapeHtml(evidence.level || "Insufficient")} evidence</strong><p>${escapeHtml(`${Number(evidence.micro_resolved || 0)} micro + ${Number(evidence.standard_resolved || 0)} standard resolved.${evidenceNeed ? ` Need ${evidenceNeed} more for the next evidence tier.` : " Current evidence tier is fully supported."}`)}</p></div>
+    <div class="adaptive-learning-signal adaptive-stability"><span>Strategy stability</span><strong>${escapeHtml(stabilityLabel)}</strong><p>${escapeHtml(stability.reason || "Atlas has not yet applied a prior opportunity-specific strategy that needs a stability guardrail.")}</p></div>
+  </div>`;
+}
+
+function renderRecommendationFeedback(data) {
+  const root = document.getElementById("recommendationFeedback");
+  if (!root) return;
+  const rows = (data.recommendation_feedback || []).slice(0, 5);
+  if (!rows.length) {
+    root.innerHTML = '<div class="focus-history-empty">No recommendation feedback yet. Atlas will learn after focus actions are completed or deferred.</div>';
+    return;
+  }
+  root.innerHTML = rows.map(item => {
+    const adjustment = Number(item.priority_adjustment || 0);
+    const change = adjustment > 0 ? `+${adjustment}` : String(adjustment);
+    const follow = item.follow_through_pct == null ? "—" : `${Number(item.follow_through_pct)}%`;
+    return `<div class="recommendation-feedback-row"><div><strong>${escapeHtml(item.name || "Opportunity")}</strong><span>${escapeHtml(item.signal || "Neutral")} · ${follow} follow-through · ${Number(item.completed || 0)} completed / ${Number(item.deferred || 0)} deferred</span><p>${escapeHtml(item.guidance || "")}</p></div><small class="feedback-adjustment ${adjustment > 0 ? "positive" : adjustment < 0 ? "negative" : "neutral"}">${escapeHtml(change)} priority</small></div>`;
+  }).join("");
+}
+
 function renderCommandCenter(data) {
   const q=s=>document.querySelector(s);
   if(!q("#commandHeadline")) return;
@@ -356,9 +527,15 @@ function renderCommandCenter(data) {
     ["Portfolio Profit",`$${Number(data.money.total_profit).toFixed(2)}`,"Recorded actual profit"]
   ];
   q("#commandKpis").innerHTML=cards.map(x=>`<div class="command-kpi"><span>${escapeHtml(x[0])}</span><strong>${escapeHtml(String(x[1]))}</strong><small>${escapeHtml(x[2])}</small></div>`).join("");
+  renderIntelligenceCommand(data);
+  renderFocusReview(data);
+  renderFocusScorecard(data);
+  renderFocusFriction(data);
+  renderAdaptiveActionLearning(data);
+  renderRecommendationFeedback(data);
   q("#commandAttention").innerHTML=data.attention.length?data.attention.slice(0,6).map(item=>`<button class="command-item" data-command-open="${item.id}"><span class="command-priority priority-${String(item.priority).toLowerCase()}">${escapeHtml(item.priority)}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.action||"Review opportunity")}</span></div><small>${item.due_date?`Due ${escapeHtml(item.due_date)}`:escapeHtml(item.status)}</small></button>`).join(""):`<div class="command-empty"><strong>Nothing urgent.</strong><span>Atlas will surface work here when it needs you.</span></div>`;
   q("#commandMoves").innerHTML=data.next_moves.length?data.next_moves.map((item,i)=>`<button class="command-item" data-command-open="${item.id}"><span class="move-number">${i+1}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.action||"Review opportunity")}</span></div><small>${escapeHtml(item.due_date||item.priority)}</small></button>`).join(""):`<div class="command-empty"><strong>No queued moves.</strong><span>Portfolio is currently stable.</span></div>`;
-  document.querySelectorAll("[data-command-open]").forEach(button=>button.addEventListener("click",()=>{const id=Number(button.dataset.commandOpen);const item=opportunities.find(o=>Number(o.id)===id);if(item?.status==="Testing")openExperiment(id);else if(item)openEdit(item);}));
+  document.querySelectorAll("[data-command-open]").forEach(button=>button.addEventListener("click",()=>openIntelligenceTarget(Number(button.dataset.commandOpen))));
 }
 
 async function loadOpportunities() {

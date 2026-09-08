@@ -1,40 +1,26 @@
-# Atlas Build 41 — Daily Focus Plan
+# Atlas Build 41 — Daily Focus Review
 
 Status: COMPLETE
 
-Build 41 is the first feature build on the normalized Atlas source tree. It converts Atlas's ranked intelligence queue into a short, deliberate daily work plan instead of asking Ross to interpret the entire portfolio at once.
+Build 41 turns the Focus Execution history from Build 40 into visible daily operating feedback.
 
 ## What changed
+- Version 1.10.0.
+- Adds a Daily Focus Review panel to the Executive Briefing.
+- Shows today's focus sessions started, completed, deferred, and tracked focus minutes.
+- Shows whether a focus is currently active.
+- Adds a compact recent-focus activity trail with opportunity, action, event, time, and session duration when available.
+- Completed and deferred focus sessions now calculate duration automatically from the existing `started_at` timestamp.
+- Adds `focus_execution` to `/api/command-center` so the review is reusable beyond the current dashboard.
+- Uses `ATLAS_TIME_ZONE` (default `America/Chicago`) so “today” follows Ross’s local day even when Render runs in UTC.
+- Preserves the existing focus workflow and opportunity-embedded history; no second task or time-tracking database is introduced.
 
-- Version bumped to 1.8.0.
-- Adds `daily-focus.js`, which turns the intelligence queue into one primary objective, up to two supporting moves, and a defer list.
-- Adds a three-move daily capacity rule so lower-ranked work does not continuously expand the day's workload.
-- Adds a stop rule that keeps Atlas focused on the highest-leverage objective until it is completed, blocked, or deliberately deferred.
-- Killed opportunities are excluded from the daily plan.
-- Paused and low-priority work can be explicitly surfaced as deferred rather than silently competing for attention.
-- Adds authenticated `GET /api/daily-focus`.
-- Adds `server-build41.js`, which preserves all existing Atlas routes while intercepting the new Daily Focus endpoint.
-- Updates the production start command to the Build 41 server wrapper.
-- Adds regression tests for primary selection, supporting moves, killed-work exclusion, defer behavior, and an empty portfolio.
-- Adds GitHub Actions application CI so syntax and regression checks run automatically for future `app/**` changes.
+## Product intent
+Builds 38–40 moved Atlas from recommendation to execution. Build 41 gives Atlas and Ross a daily feedback loop: not only what Atlas recommended, but what was actually started, completed, deferred, and how much focused execution time was recorded.
 
-## Daily Focus response
-
-`GET /api/daily-focus` returns:
-
-- `headline`
-- `primary_objective`
-- `supporting_moves`
-- `defer`
-- `capacity_rule`
-- `stop_rule`
-- `queue_size`
-- `urgent_count`
-
-The plan is generated from the existing Build 38 intelligence ranking, so it inherits Atlas's lifecycle, urgency, profitability, effort, scalability, and live-test signals.
-
-## Product behavior
-
-The intent is simple: Atlas should not merely say what matters; it should reduce the portfolio to the small number of moves Ross should actually act on today.
-
-Build 41 keeps the full intelligence queue available while adding a more decisive operating layer on top of it.
+## Verification
+- `npm run check` passes.
+- Daily focus events are separated from older history.
+- Focus session duration is retained on completion/deferral.
+- Command Center exposes the daily execution summary.
+- Daily Focus Review UI is mounted in the Executive Briefing.

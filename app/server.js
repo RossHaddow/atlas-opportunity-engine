@@ -15,6 +15,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const LABOR_RATE = 25;
 const EXPERIMENT_REQUIRED_FIELDS = ["demand_evidence", "offer", "sales_channel", "start_date", "end_date", "approved_budget"];
 const FINAL_DECISIONS = ["Move to Active", "Revise and Retest", "Pause", "Kill"];
+const ATLAS_TIME_ZONE = process.env.ATLAS_TIME_ZONE || "America/Chicago";
+const FOCUS_DEFER_REASONS = {
+  timing: "Bad timing / not today",
+  capacity: "Not enough time / energy",
+  blocked: "Blocked / waiting on something",
+  too_big: "Action is too big",
+  unclear: "Next step is unclear",
+  low_priority: "Does not feel worth prioritizing",
+  other: "Other"
+};
 
 function authConfig(env = process.env) {
   const password = String(env.ATLAS_ACCESS_PASSWORD || "");
@@ -571,9 +581,414 @@ function interventionPlan(opportunity, now = Date.now()) {
 }
 
 
-function opportunityIntelligence(opportunity, now = Date.now()) {
+
+function normalizeDeferReason(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(FOCUS_DEFER_REASONS, key) ? key : "";
+}
+
+function normalizeFocusState(focus = {}, now = Date.now()) {
+  const history = Array.isArray(focus.history) ? focus.history : [];
+  const deferredUntil = focus.deferred_until || null;
+  let status = ["idle", "active", "deferred", "completed"].includes(focus.status) ? focus.status : "idle";
+  if (["deferred", "completed"].includes(status) && deferredUntil && Date.parse(deferredUntil) <= now) status = "idle";
+  return {
+    status,
+    action: String(focus.action || ""),
+    started_at: focus.started_at || null,
+    deferred_until: deferredUntil,
+    completed_at: focus.completed_at || null,
+    action_mode: focus.action_mode || null,
+    estimated_minutes: focus.estimated_minutes == null ? null : Number(focus.estimated_minutes),
+    defer_reason: normalizeDeferReason(focus.defer_reason),
+    history
+  };
+}
+
+function focusStateForOpportunity(opportunity, now = Date.now()) {
+  return normalizeFocusState(opportunity.focus || {}, now);
+}
+
+function focusFrictionDiagnosis(opportunity, now = Date.now(), days = 14) {
+  const cutoff = now - days * DAY_MS;
+  const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+  const deferredEvents = history.filter(event => {
+    const at = Date.parse(event.at || "");
+    return event.event === "deferred" && Number.isFinite(at) && at >= cutoff && at <= now;
+  });
+  const counts = Object.fromEntries(Object.keys(FOCUS_DEFER_REASONS).map(key => [key, 0]));
+  for (const event of deferredEvents) {
+    const reason = normalizeDeferReason(event.defer_reason);
+    if (reason) counts[reason] += 1;
+  }
+  const reasoned = Object.values(counts).reduce((sum, value) => sum + value, 0);
+  const ranked = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const [topReason, topCount] = ranked[0] || ["", 0];
+  const dominant = reasoned >= 2 && topCount >= 2 && (topCount / reasoned >= 0.5 || topCount >= 3) ? topReason : "";
+  let signal = "No friction diagnosis yet";
+  let guidance = "Choose a defer reason when useful so Atlas can learn why recommended work is not getting done.";
+  let response = "unknown";
+  if (reasoned && !dominant) {
+    signal = "Mixed execution friction";
+    guidance = "Deferrals are coming from different causes. Keep collecting reasons before Atlas changes how it packages this work.";
+    response = "mixed";
+  } else if (dominant === "too_big") {
+    signal = "Action-size friction";
+    guidance = "The recommended work is repeatedly feeling too large. Shrink the next step and preserve the strategic recommendation.";
+    response = "shrink";
+  } else if (dominant === "unclear") {
+    signal = "Clarity friction";
+    guidance = "The next step is repeatedly unclear. Rewrite it as one concrete deliverable before asking for more execution time.";
+    response = "clarify";
+  } else if (dominant === "blocked") {
+    signal = "Dependency friction";
+    guidance = "The work is being deferred because something else must happen first. Resolve or explicitly track the blocker instead of shrinking the task.";
+    response = "blocked";
+  } else if (["timing", "capacity"].includes(dominant)) {
+    signal = "Timing / capacity friction";
+    guidance = "The opportunity may still be good, but the work is landing at the wrong time or exceeding available capacity. Re-time it rather than treating the task itself as broken.";
+    response = "retime";
+  } else if (dominant === "low_priority") {
+    signal = "Priority mismatch";
+    guidance = "This work repeatedly does not feel worth prioritizing. Atlas should question the near-term ranking or the opportunity itself instead of making the task smaller.";
+    response = "reconsider";
+  } else if (dominant === "other") {
+    signal = "Other execution friction";
+    guidance = "Deferrals have a recurring cause that does not fit the current categories. Review the opportunity notes before changing strategy.";
+    response = "review";
+  }
+  return {
+    window_days: days,
+    total_deferred: deferredEvents.length,
+    reasoned_deferred: reasoned,
+    unclassified_deferred: Math.max(0, deferredEvents.length - reasoned),
+    dominant_reason: dominant || null,
+    dominant_label: dominant ? FOCUS_DEFER_REASONS[dominant] : null,
+    dominant_count: dominant ? topCount : 0,
+    signal,
+    response,
+    guidance,
+    counts
+  };
+}
+
+function focusFrictionSummary(opportunities, now = Date.now(), days = 14) {
+  const diagnoses = opportunities.map(item => ({ id: item.id, name: item.name, ...focusFrictionDiagnosis(item, now, days) }));
+  const counts = Object.fromEntries(Object.keys(FOCUS_DEFER_REASONS).map(key => [key, 0]));
+  for (const diagnosis of diagnoses) for (const key of Object.keys(counts)) counts[key] += Number(diagnosis.counts?.[key] || 0);
+  const reasoned = Object.values(counts).reduce((sum, value) => sum + value, 0);
+  const totalDeferred = diagnoses.reduce((sum, item) => sum + Number(item.total_deferred || 0), 0);
+  const rankedReasons = Object.entries(counts).filter(([,count]) => count > 0).sort((a,b) => b[1]-a[1]);
+  const [dominantReason, dominantCount] = rankedReasons[0] || [null, 0];
+  const opportunitiesWithSignal = diagnoses.filter(item => item.reasoned_deferred > 0).sort((a,b) => b.reasoned_deferred-a.reasoned_deferred || b.total_deferred-a.total_deferred).slice(0,5);
+  return {
+    window_days: days,
+    total_deferred: totalDeferred,
+    reasoned_deferred: reasoned,
+    unclassified_deferred: Math.max(0, totalDeferred - reasoned),
+    dominant_reason: dominantReason,
+    dominant_label: dominantReason ? FOCUS_DEFER_REASONS[dominantReason] : null,
+    dominant_count: dominantCount,
+    reasons: rankedReasons.map(([key,count]) => ({ key, label: FOCUS_DEFER_REASONS[key], count })),
+    opportunities: opportunitiesWithSignal
+  };
+}
+
+function focusFeedbackForOpportunity(opportunity, now = Date.now(), days = 7) {
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: ATLAS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+  const dateKey = timestamp => formatter.format(new Date(timestamp));
+  const keys = new Set(Array.from({ length: days }, (_, index) => dateKey(now - index * DAY_MS)));
+  const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+  const recent = history.filter(event => {
+    const at = Date.parse(event.at || "");
+    return Number.isFinite(at) && keys.has(dateKey(at));
+  });
+  const completed = recent.filter(event => event.event === "completed").length;
+  const deferred = recent.filter(event => event.event === "deferred").length;
+  const resolved = completed + deferred;
+  const followThrough = resolved ? Math.round(completed / resolved * 100) : null;
+  const frictionDiagnosis = focusFrictionDiagnosis(opportunity, now, Math.max(days, 14));
+  const frictionResponse = frictionDiagnosis.response;
+  let adjustment = 0;
+  let signal = "Neutral";
+  let guidance = "Not enough recent execution history to change this recommendation.";
+  if (deferred >= 3 && deferred > completed) {
+    adjustment = -8;
+    signal = "Repeatedly deferred";
+    guidance = "This opportunity has been deferred repeatedly. Atlas is lowering its near-term work priority slightly; shrink or reconsider the next action before pushing it back to the top.";
+    if (frictionResponse === "blocked") {
+      adjustment = -2;
+      guidance = "Deferrals are primarily blocker-driven. Atlas is applying only a small near-term penalty and will preserve the task while the dependency is resolved.";
+    } else if (frictionResponse === "retime") {
+      adjustment = -3;
+      guidance = "Deferrals are primarily timing/capacity-driven. Atlas is lowering near-term priority modestly without treating the opportunity itself as weak.";
+    } else if (frictionResponse === "shrink") {
+      adjustment = -5;
+      guidance = "Deferrals point to action-size friction. Atlas will lower near-term priority modestly and shrink the next executable step.";
+    } else if (frictionResponse === "clarify") {
+      adjustment = -5;
+      guidance = "Deferrals point to clarity friction. Atlas will lower near-term priority modestly and rewrite the next step as one concrete deliverable.";
+    } else if (frictionResponse === "reconsider") {
+      adjustment = -10;
+      guidance = "Deferrals point to a priority mismatch. Atlas is applying a stronger near-term penalty and should question whether this work belongs near the top of the queue.";
+    }
+  } else if (resolved >= 2 && followThrough >= 70) {
+    adjustment = 4;
+    signal = "Strong follow-through";
+    guidance = "Recent recommendations on this opportunity are being completed. Atlas is giving it a small execution-confidence boost.";
+  } else if (resolved >= 2 && followThrough < 50) {
+    adjustment = -4;
+    signal = "Low follow-through";
+    guidance = "Recent recommended work is more often deferred than completed. Atlas is applying a small near-term penalty until the next action is easier to execute.";
+    if (["blocked", "retime"].includes(frictionResponse)) adjustment = -2;
+    else if (frictionResponse === "reconsider") adjustment = -6;
+  }
+  return { window_days: days, completed, deferred, follow_through_pct: followThrough, priority_adjustment: adjustment, signal, guidance, friction_diagnosis: frictionDiagnosis };
+}
+
+
+function adaptiveActionPolicy(learning = {}) {
+  const signal = String(learning.signal || "Not enough adaptive data");
+  if (signal === "Micro-actions are helping") {
+    return {
+      mode: "use_micro",
+      label: "Use micro-actions when friction appears",
+      guidance: "Recent evidence shows smaller actions improve follow-through, so Atlas will continue shrinking friction-heavy work."
+    };
+  }
+  if (signal === "Micro-actions are not helping yet") {
+    return {
+      mode: "pause_micro",
+      label: "Pause micro-actions",
+      guidance: "Smaller actions are not improving follow-through. Atlas will keep the strategic action intact and challenge timing, task choice, or priority instead."
+    };
+  }
+  if (signal === "No clear micro-action advantage") {
+    return {
+      mode: "selective_micro",
+      label: "Use micro-actions selectively",
+      guidance: "Micro and standard actions are performing similarly. Atlas will only shrink work when deferral friction is strong."
+    };
+  }
+  return {
+    mode: "learning",
+    label: "Learn before changing strategy",
+    guidance: "Atlas will use micro-actions for clear friction while it gathers enough comparative execution data to set a stronger policy."
+  };
+}
+
+
+
+function adaptiveStrategyEvidence(learning = {}) {
+  const microResolved = Number(learning.micro?.resolved || 0);
+  const standardResolved = Number(learning.standard?.resolved || 0);
+  const minGroup = Math.min(microResolved, standardResolved);
+  const totalResolved = microResolved + standardResolved;
+  let level = "Insufficient";
+  let status = "insufficient";
+  let guidance = "Atlas needs at least two resolved micro-actions and two resolved standard actions before using local comparative evidence.";
+  let targetPerMode = 2;
+  if (minGroup >= 8) {
+    level = "Strong"; status = "strong"; targetPerMode = 8;
+    guidance = "This strategy is supported by a deeper local execution sample and can be treated as durable unless newer outcomes materially change the pattern.";
+  } else if (minGroup >= 4) {
+    level = "Established"; status = "established"; targetPerMode = 4;
+    guidance = "This strategy has enough balanced local outcomes to be treated as established, while Atlas continues monitoring newer execution evidence.";
+  } else if (minGroup >= 2) {
+    level = "Provisional"; status = "provisional"; targetPerMode = 4;
+    guidance = "This local strategy is valid but still provisional. Atlas should keep collecting balanced micro and standard outcomes before treating it as durable.";
+  }
+  const remainingMicro = Math.max(0, targetPerMode - microResolved);
+  const remainingStandard = Math.max(0, targetPerMode - standardResolved);
+  return {
+    level,
+    status,
+    micro_resolved: microResolved,
+    standard_resolved: standardResolved,
+    total_resolved: totalResolved,
+    target_per_mode: targetPerMode,
+    remaining_micro: remainingMicro,
+    remaining_standard: remainingStandard,
+    balanced_sample: minGroup >= 2,
+    guidance
+  };
+}
+
+function adaptivePolicyForMode(mode) {
+  const policies = {
+    use_micro: { mode: "use_micro", label: "Use micro-actions when friction appears", guidance: "Recent execution evidence supports using smaller actions when friction appears." },
+    selective_micro: { mode: "selective_micro", label: "Use micro-actions selectively", guidance: "Micro and standard actions are performing similarly. Atlas will only shrink work when deferral friction is strong." },
+    pause_micro: { mode: "pause_micro", label: "Pause micro-actions", guidance: "Recent execution evidence does not support shrinking work. Atlas should question timing, task choice, or priority instead." },
+    learning: { mode: "learning", label: "Learn before changing strategy", guidance: "Atlas will keep learning before changing how it packages recommendations." }
+  };
+  return policies[mode] || policies.learning;
+}
+
+function lastAdaptiveStrategySnapshot(opportunity = {}) {
+  const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const event = history[index] || {};
+    if (event.event !== "started" || !event.adaptive_strategy_mode) continue;
+    return {
+      mode: event.adaptive_strategy_mode,
+      scope: event.adaptive_strategy_scope || null,
+      evidence_level: event.adaptive_strategy_evidence || "Insufficient",
+      at: event.at || null
+    };
+  }
+  return null;
+}
+
+function adaptiveStrategyGuardrail(opportunity, candidatePolicy, evidence = {}, learning = {}) {
+  const previous = lastAdaptiveStrategySnapshot(opportunity);
+  const candidate = { ...candidatePolicy };
+  const lift = Number.isFinite(Number(learning.micro_follow_through_lift_pct)) ? Number(learning.micro_follow_through_lift_pct) : null;
+  const rank = { Insufficient: 0, Provisional: 1, Established: 2, Strong: 3 };
+  const currentRank = rank[evidence.level] ?? 0;
+  const previousRank = rank[previous?.evidence_level] ?? 0;
+  const base = {
+    previous_mode: previous?.mode || null,
+    previous_evidence: previous?.evidence_level || null,
+    candidate_mode: candidate.mode,
+    held: false,
+    reason: previous ? "The current evidence supports keeping or updating the prior strategy." : "No prior applied strategy exists yet, so Atlas can use the current evidence directly."
+  };
+  if (!previous || previous.mode === candidate.mode || previous.scope !== "opportunity" || previousRank < 2) return { policy: candidate, stability: base };
+
+  const enoughDepth = currentRank >= previousRank;
+  let strongEnoughChange = false;
+  if (candidate.mode === "use_micro") strongEnoughChange = lift != null && lift >= 30;
+  else if (candidate.mode === "pause_micro") strongEnoughChange = lift != null && lift <= -30;
+  else if (candidate.mode === "selective_micro") strongEnoughChange = lift != null && Math.abs(lift) <= 10;
+  else strongEnoughChange = currentRank > previousRank;
+
+  if (enoughDepth && strongEnoughChange) return {
+    policy: candidate,
+    stability: { ...base, reason: `The strategy changed because ${evidence.level.toLowerCase()} evidence now shows a sufficiently strong contradictory pattern.` }
+  };
+
+  const heldPolicy = adaptivePolicyForMode(previous.mode);
+  return {
+    policy: heldPolicy,
+    stability: {
+      ...base,
+      held: true,
+      applied_mode: previous.mode,
+      reason: !enoughDepth
+        ? `Atlas is holding the prior ${previous.evidence_level.toLowerCase()} strategy until contradictory evidence reaches at least the same depth.`
+        : "Atlas is holding the prior established strategy because the newer performance swing is not yet strong enough to justify a flip."
+    }
+  };
+}
+
+function adaptiveStrategyForOpportunity(opportunity, portfolioLearning = {}, portfolioPolicy = null, now = Date.now(), days = 14) {
+  const localLearning = adaptiveActionLearning([opportunity], now, days);
+  const localEvidence = adaptiveStrategyEvidence(localLearning);
+  const portfolioEvidence = adaptiveStrategyEvidence(portfolioLearning);
+  const definitiveSignals = new Set([
+    "Micro-actions are helping",
+    "Micro-actions are not helping yet",
+    "No clear micro-action advantage"
+  ]);
+  if (definitiveSignals.has(localLearning.signal)) {
+    const candidatePolicy = adaptiveActionPolicy(localLearning);
+    const guarded = adaptiveStrategyGuardrail(opportunity, candidatePolicy, localEvidence, localLearning);
+    const policy = guarded.policy;
+    return {
+      ...policy,
+      scope: "opportunity",
+      scope_label: "Opportunity-specific evidence",
+      opportunity_id: opportunity.id,
+      local_learning: localLearning,
+      portfolio_learning: portfolioLearning,
+      evidence: localEvidence,
+      portfolio_evidence: portfolioEvidence,
+      stability: guarded.stability,
+      guidance: `${policy.guidance} This strategy is based on this opportunity's own execution history. Evidence level: ${localEvidence.level}. ${localEvidence.guidance}${guarded.stability.held ? ` Stability guardrail: ${guarded.stability.reason}` : ""}`
+    };
+  }
+  const fallback = portfolioPolicy || adaptiveActionPolicy(portfolioLearning);
+  return {
+    ...fallback,
+    scope: "portfolio",
+    scope_label: "Portfolio fallback",
+    opportunity_id: opportunity.id,
+    local_learning: localLearning,
+    portfolio_learning: portfolioLearning,
+    evidence: localEvidence,
+    portfolio_evidence: portfolioEvidence,
+    stability: { previous_mode: lastAdaptiveStrategySnapshot(opportunity)?.mode || null, candidate_mode: fallback.mode, held: false, reason: "Local comparative evidence is not yet sufficient for an opportunity-specific stability decision." },
+    guidance: `${fallback.guidance} This opportunity does not yet have enough comparative history, so Atlas is using the portfolio strategy. Local evidence level: ${localEvidence.level}. ${localEvidence.guidance}`
+  };
+}
+
+function adaptiveStrategyContext(opportunities, now = Date.now()) {
+  const learning = adaptiveActionLearning(opportunities, now);
+  const portfolioPolicy = adaptiveActionPolicy(learning);
+  const strategies = opportunities.map(item => adaptiveStrategyForOpportunity(item, learning, portfolioPolicy, now));
+  const byId = new Map(strategies.map(item => [String(item.opportunity_id), item]));
+  return { learning, portfolioPolicy, strategies, byId };
+}
+
+function adaptiveNextAction(opportunity, strategicRecommendation, executionFeedback, now = Date.now(), policy = null) {
+  const item = withReviewState(opportunity, now);
+  const adjustment = Number(executionFeedback?.priority_adjustment || 0);
+  const friction = adjustment < 0;
+  const policyMode = policy?.mode || "legacy";
+  const frictionResponse = executionFeedback?.friction_diagnosis?.response || "unknown";
+  const nonSizeFriction = ["blocked", "retime", "reconsider", "review"].includes(frictionResponse);
+  const shouldShrink = friction && !nonSizeFriction && policyMode !== "pause_micro" && (policyMode !== "selective_micro" || adjustment <= -8 || ["shrink", "clarify"].includes(frictionResponse));
+  if (!shouldShrink) {
+    let reason = "No recent execution friction requires Atlas to shrink this action.";
+    if (frictionResponse === "blocked") reason = "Recent deferrals are blocker-driven, so Atlas is preserving the strategic action and directing attention to the dependency instead of shrinking the task.";
+    else if (frictionResponse === "retime") reason = "Recent deferrals are timing/capacity-driven, so Atlas is preserving the strategic action and treating scheduling as the problem.";
+    else if (frictionResponse === "reconsider") reason = "Recent deferrals indicate a priority mismatch, so Atlas is preserving the strategic action while questioning whether this work belongs near the top of the queue.";
+    else if (friction && policyMode === "pause_micro") reason = "Adaptive learning shows micro-actions are not improving follow-through, so Atlas is preserving the strategic action and reconsidering timing, task choice, or priority instead.";
+    else if (friction && policyMode === "selective_micro") reason = "Adaptive learning shows no clear micro-action advantage, so Atlas only shrinks work when deferral friction is strong.";
+    return {
+      mode: "standard",
+      action: strategicRecommendation || item.next_action || "Review opportunity",
+      estimated_minutes: null,
+      reason,
+      policy_mode: policyMode
+    };
+  }
+
+  let action = "Spend 15 minutes completing the smallest visible piece of this recommendation.";
+  let estimatedMinutes = 15;
+  if (frictionResponse === "clarify") {
+    estimatedMinutes = 10;
+    action = "Spend 10 minutes rewriting the next step as one concrete deliverable with a clear done condition.";
+  } else if (item.status === "Researching") {
+    action = "Spend 15 minutes finding and recording one concrete demand signal.";
+  } else if (item.status === "Testing") {
+    if (item.decision_ready) action = "Spend 15 minutes reviewing the test results and write the final decision summary.";
+    else if (["urgent", "due"].includes(item.attention_level) && item.next_action) action = `Spend 15 minutes completing only this step: ${item.next_action}`;
+    else action = "Spend 15 minutes recording the next missing test result or checkpoint in the Testing Workspace.";
+  } else if (item.status === "Active") {
+    action = "Spend 15 minutes reviewing current revenue and profit, then record one keep-or-adjust decision.";
+  } else if (item.status === "Scaled") {
+    action = "Spend 15 minutes checking profitability and workload, then record one keep-or-adjust decision.";
+  } else if (item.status === "Paused") {
+    estimatedMinutes = 10;
+    action = "Spend 10 minutes reviewing why this was paused and choose resume, extend, or kill.";
+  }
+
+  return {
+    mode: "micro",
+    action,
+    estimated_minutes: estimatedMinutes,
+    reason: frictionResponse === "clarify" ? "Recent deferrals indicate the next step is unclear, so Atlas is converting it into a short clarification action." : "Recent deferrals suggest the strategic recommendation is too large to execute cleanly in one sitting.",
+    strategic_recommendation: strategicRecommendation || item.next_action || "Review opportunity",
+    policy_mode: policyMode
+  };
+}
+
+function opportunityIntelligence(opportunity, now = Date.now(), adaptivePolicy = null) {
   const item = withReviewState(opportunity);
   const health = item.status === "Testing" ? experimentHealth(item, now) : null;
+  const focus = focusStateForOpportunity(opportunity, now);
+  const executionFeedback = focusFeedbackForOpportunity(opportunity, now);
   const base = Number(item.atlas_score || 0);
   let score = Math.round(base * 0.55);
   const reasons = [];
@@ -585,17 +1000,196 @@ function opportunityIntelligence(opportunity, now = Date.now()) {
   if (Number(item.actual_profit || 0) > 0) { score += 8; reasons.push("It is already producing profit."); }
   if (String(item.ongoing_effort || "").toLowerCase() === "low") score += 4;
   if (String(item.scalability || "").toLowerCase() === "high") score += 4;
+  if (executionFeedback.priority_adjustment) {
+    score += executionFeedback.priority_adjustment;
+    reasons.push(executionFeedback.priority_adjustment > 0
+      ? "Recent follow-through supports keeping this work near the top."
+      : "Recent deferrals reduce its near-term execution priority.");
+  }
+  if (focus.status === "active") { score += 15; reasons.unshift("You already started this focus action."); }
   score = Math.max(0, Math.min(100, score));
-  let recommendation = item.next_action || "Review opportunity";
-  if (item.status === "Researching" && base >= 75) recommendation = "Finish demand validation and move this toward a 30-day test.";
-  if (item.status === "Killed") recommendation = "Leave closed unless new evidence materially changes the case.";
-  return { id:item.id, name:item.name, status:item.status, work_priority_score:score, recommendation, reasons, atlas_score:base, health_label:health?.health_label || null, next_action_date:item.next_action_date || null };
+  let strategicRecommendation = item.next_action || "Review opportunity";
+  if (item.status === "Researching" && base >= 75) strategicRecommendation = "Finish demand validation and move this toward a 30-day test.";
+  if (item.status === "Killed") strategicRecommendation = "Leave closed unless new evidence materially changes the case.";
+  const resolvedAdaptivePolicy = typeof adaptivePolicy === "function" ? adaptivePolicy(opportunity) : adaptivePolicy;
+  const adaptive = adaptiveNextAction(opportunity, strategicRecommendation, executionFeedback, now, resolvedAdaptivePolicy);
+  let recommendation = strategicRecommendation;
+  if (executionFeedback.priority_adjustment < 0 && item.status !== "Killed") recommendation = `Shrink the next action, then: ${strategicRecommendation}`;
+  return { id:item.id, name:item.name, status:item.status, work_priority_score:score, recommendation, strategic_recommendation: strategicRecommendation, adaptive_next_action: adaptive, adaptive_strategy: resolvedAdaptivePolicy || null, reasons, atlas_score:base, health_label:health?.health_label || null, next_action_date:item.next_action_date || null, focus, execution_feedback: executionFeedback };
 }
 
-function intelligenceQueue(opportunities, now = Date.now()) {
-  return opportunities.map(item => opportunityIntelligence(item, now))
-    .filter(item => item.status !== "Killed")
+function intelligenceQueue(opportunities, now = Date.now(), adaptivePolicy = null) {
+  return opportunities.map(item => opportunityIntelligence(item, now, adaptivePolicy))
+    .filter(item => item.status !== "Killed" && !(["deferred", "completed"].includes(item.focus.status) && item.focus.deferred_until && Date.parse(item.focus.deferred_until) > now))
     .sort((a,b)=>b.work_priority_score-a.work_priority_score || b.atlas_score-a.atlas_score);
+}
+
+
+function focusExecutionSummary(opportunities, now = Date.now()) {
+  const dateKey = timestamp => new Intl.DateTimeFormat("en-CA", { timeZone: ATLAS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(timestamp));
+  const todayKey = dateKey(now);
+  const events = [];
+  for (const opportunity of opportunities) {
+    const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+    for (const event of history) {
+      const at = Date.parse(event.at || '');
+      if (!Number.isFinite(at)) continue;
+      events.push({
+        opportunity_id: opportunity.id,
+        opportunity_name: opportunity.name,
+        event: String(event.event || ''),
+        action: String(event.action || ''),
+        defer_reason: normalizeDeferReason(event.defer_reason),
+        at: event.at,
+        duration_minutes: Math.max(0, Number(event.duration_minutes || 0))
+      });
+    }
+  }
+  const today = events.filter(event => dateKey(Date.parse(event.at)) === todayKey);
+  const count = type => today.filter(event => event.event === type).length;
+  const focusedMinutes = Math.round(today.reduce((sum, event) => sum + Number(event.duration_minutes || 0), 0));
+  const active = opportunities.filter(item => focusStateForOpportunity(item, now).status === 'active').length;
+  return {
+    date: todayKey,
+    started: count('started'),
+    completed: count('completed'),
+    deferred: count('deferred'),
+    focused_minutes: focusedMinutes,
+    active,
+    recent: events.sort((a,b)=>Date.parse(b.at)-Date.parse(a.at)).slice(0, 8)
+  };
+}
+
+function focusScorecard(opportunities, now = Date.now(), days = 7) {
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: ATLAS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+  const dateKey = timestamp => formatter.format(new Date(timestamp));
+  const keys = new Set(Array.from({ length: days }, (_, index) => dateKey(now - index * DAY_MS)));
+  const events = [];
+  const byOpportunity = new Map();
+  for (const opportunity of opportunities) {
+    const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+    for (const event of history) {
+      const at = Date.parse(event.at || "");
+      if (!Number.isFinite(at) || !keys.has(dateKey(at))) continue;
+      const normalized = {
+        opportunity_id: opportunity.id,
+        opportunity_name: opportunity.name,
+        event: String(event.event || ""),
+        action: String(event.action || ""),
+        at: event.at,
+        date: dateKey(at),
+        duration_minutes: Math.max(0, Number(event.duration_minutes || 0))
+      };
+      events.push(normalized);
+      const row = byOpportunity.get(opportunity.id) || { opportunity_id: opportunity.id, opportunity_name: opportunity.name, starts: 0, completed: 0, deferred: 0, focused_minutes: 0 };
+      if (normalized.event === "started") row.starts += 1;
+      if (normalized.event === "completed") row.completed += 1;
+      if (normalized.event === "deferred") row.deferred += 1;
+      row.focused_minutes += normalized.duration_minutes;
+      byOpportunity.set(opportunity.id, row);
+    }
+  }
+  const count = type => events.filter(event => event.event === type).length;
+  const started = count("started");
+  const completed = count("completed");
+  const deferred = count("deferred");
+  const focusedMinutes = Math.round(events.reduce((sum, event) => sum + event.duration_minutes, 0));
+  const resolved = completed + deferred;
+  const followThrough = resolved ? Math.round(completed / resolved * 100) : null;
+  const activeDays = new Set(events.map(event => event.date)).size;
+  const topOpportunities = [...byOpportunity.values()]
+    .sort((a,b)=>b.focused_minutes-a.focused_minutes || b.completed-a.completed || b.starts-a.starts)
+    .slice(0, 5)
+    .map(row => ({ ...row, focused_minutes: Math.round(row.focused_minutes) }));
+  let signal = "No focus data yet";
+  let guidance = "Use Start Focus when you begin so Atlas can learn from your execution pattern.";
+  if (events.length) {
+    if (deferred >= 3 && deferred > completed) {
+      signal = "Deferral pattern";
+      guidance = "Several focus actions are being deferred. Review whether Atlas is ranking the right work or whether the recommended actions are too large.";
+    } else if (resolved >= 2 && followThrough >= 70) {
+      signal = "Strong follow-through";
+      guidance = "Execution is matching Atlas recommendations. Keep the current focus cadence and protect the highest-leverage work.";
+    } else if (started >= 2 && resolved === 0) {
+      signal = "Open execution loop";
+      guidance = "Focus sessions are being started but not closed. Complete or intentionally defer them so Atlas can distinguish progress from abandoned work.";
+    } else {
+      signal = "Building execution history";
+      guidance = "Keep recording focus actions; Atlas needs a few completed or deferred sessions before the pattern is meaningful.";
+    }
+  }
+  return {
+    window_days: days,
+    started,
+    completed,
+    deferred,
+    focused_minutes: focusedMinutes,
+    active_days: activeDays,
+    follow_through_pct: followThrough,
+    signal,
+    guidance,
+    top_opportunities: topOpportunities
+  };
+}
+
+
+function adaptiveActionLearning(opportunities, now = Date.now(), days = 14) {
+  const cutoff = now - days * DAY_MS;
+  const resolved = [];
+  for (const opportunity of opportunities) {
+    const history = Array.isArray(opportunity.focus?.history) ? opportunity.focus.history : [];
+    for (const event of history) {
+      if (!['completed', 'deferred'].includes(event.event)) continue;
+      const at = Date.parse(event.at || '');
+      if (!Number.isFinite(at) || at < cutoff || at > now) continue;
+      const mode = event.action_mode === 'micro' ? 'micro' : event.action_mode === 'standard' ? 'standard' : null;
+      if (!mode) continue;
+      resolved.push({
+        mode,
+        outcome: event.event,
+        duration_minutes: Math.max(0, Number(event.duration_minutes || 0)),
+        opportunity_id: opportunity.id,
+        opportunity_name: opportunity.name,
+        at: event.at
+      });
+    }
+  }
+  const summarize = mode => {
+    const rows = resolved.filter(row => row.mode === mode);
+    const completed = rows.filter(row => row.outcome === 'completed').length;
+    const deferred = rows.filter(row => row.outcome === 'deferred').length;
+    const total = completed + deferred;
+    const durations = rows.filter(row => row.duration_minutes > 0).map(row => row.duration_minutes);
+    return {
+      resolved: total,
+      completed,
+      deferred,
+      follow_through_pct: total ? Math.round(completed / total * 100) : null,
+      avg_resolution_minutes: durations.length ? Math.round(durations.reduce((a,b)=>a+b,0) / durations.length) : null
+    };
+  };
+  const micro = summarize('micro');
+  const standard = summarize('standard');
+  let signal = 'Not enough adaptive data';
+  let guidance = 'Atlas will compare adaptive micro-actions with standard actions after each has at least two resolved focus sessions.';
+  let micro_effect = null;
+  if (micro.resolved >= 2 && standard.resolved >= 2) {
+    micro_effect = micro.follow_through_pct - standard.follow_through_pct;
+    if (micro_effect >= 20) {
+      signal = 'Micro-actions are helping';
+      guidance = 'Smaller adaptive actions are producing materially stronger follow-through. Keep using them when execution friction appears.';
+    } else if (micro_effect <= -20) {
+      signal = 'Micro-actions are not helping yet';
+      guidance = 'Shrinking the action has not improved follow-through. Atlas should reconsider the task itself, timing, or opportunity priority instead of shrinking it further.';
+    } else {
+      signal = 'No clear micro-action advantage';
+      guidance = 'Adaptive and standard actions are resolving at similar rates. Keep collecting execution data before changing the strategy.';
+    }
+  } else if (micro.resolved >= 2 && standard.resolved < 2) {
+    signal = 'Adaptive baseline forming';
+    guidance = 'Atlas has enough micro-action results to form a baseline, but needs more standard-action outcomes for a fair comparison.';
+  }
+  return { window_days: days, micro, standard, micro_follow_through_lift_pct: micro_effect, signal, guidance };
 }
 
 function commandCenter(opportunities, now = Date.now()) {
@@ -643,6 +1237,12 @@ function commandCenter(opportunities, now = Date.now()) {
     due_date:row.action.next_action_date||row.experiment.end_date||""
   }));
 
+  const adaptiveContext = adaptiveStrategyContext(opportunities, now);
+  const adaptiveLearning = adaptiveContext.learning;
+  const adaptivePolicy = adaptiveContext.portfolioPolicy;
+  const adaptiveStrategies = adaptiveContext.strategies;
+  const rankedIntelligence = intelligenceQueue(opportunities, now, opportunity => adaptiveContext.byId.get(String(opportunity.id)) || adaptivePolicy);
+
   return {
     generated_at:new Date(now).toISOString(),
     headline:attention.length?`${attention.length} item${attention.length===1?"":"s"} need attention.`:(liveTests.length?`${liveTests.length} live test${liveTests.length===1?"":"s"} running with no urgent action.`:"Portfolio is stable."),
@@ -663,8 +1263,19 @@ function commandCenter(opportunities, now = Date.now()) {
       decisions_ready:liveTests.filter(r=>r.decision?.decision_ready).length
     },
     attention,next_moves:nextMoves,
-    intelligence: intelligenceQueue(opportunities, now).slice(0,5),
-    top_focus: intelligenceQueue(opportunities, now)[0] || null
+    focus_execution: focusExecutionSummary(opportunities, now),
+    focus_scorecard: focusScorecard(opportunities, now),
+    focus_friction: focusFrictionSummary(opportunities, now),
+    adaptive_action_learning: adaptiveLearning,
+    adaptive_action_policy: adaptivePolicy,
+    adaptive_strategy_evidence: adaptiveStrategyEvidence(adaptiveLearning),
+    adaptive_strategy_profiles: adaptiveStrategies,
+    recommendation_feedback: opportunities.map(item => ({ id: item.id, name: item.name, ...focusFeedbackForOpportunity(item, now) }))
+      .filter(item => item.completed || item.deferred)
+      .sort((a,b)=>Math.abs(b.priority_adjustment)-Math.abs(a.priority_adjustment) || (b.completed+b.deferred)-(a.completed+a.deferred))
+      .slice(0,5),
+    intelligence: rankedIntelligence.slice(0,5),
+    top_focus: rankedIntelligence[0] || null
   };
 }
 
@@ -852,8 +1463,58 @@ async function api(req, res, url) {
     }
   }
 
+  const focusMatch = url.pathname.match(/^\/api\/opportunities\/(\d+)\/focus$/);
+  if (req.method === "POST" && focusMatch) {
+    const input = await body(req);
+    const action = String(input.action || "").toLowerCase();
+    if (!['start', 'complete', 'defer'].includes(action)) return json(res, 400, { error: "Focus action must be start, complete, or defer." });
+    const data = readData();
+    const index = data.findIndex(item => Number(item.id) === Number(focusMatch[1]));
+    if (index === -1) return json(res, 404, { error: "Opportunity not found." });
+    const now = Date.now();
+    const stamp = new Date(now).toISOString();
+    const current = focusStateForOpportunity(data[index], now);
+    const adaptiveContext = adaptiveStrategyContext(data, now);
+    const appliedStrategy = adaptiveContext.byId.get(String(data[index].id)) || adaptiveContext.portfolioPolicy;
+    const intelligence = opportunityIntelligence(data[index], now, appliedStrategy);
+    const recommendation = intelligence.adaptive_next_action?.action || intelligence.recommendation;
+    const history = [...current.history];
+    let next = { ...current };
+    if (action === 'start') {
+      const actionMode = intelligence.adaptive_next_action?.mode || 'standard';
+      const estimatedMinutes = intelligence.adaptive_next_action?.estimated_minutes ?? null;
+      const strategyEvidence = appliedStrategy?.evidence?.level || adaptiveContext.portfolioPolicy?.evidence?.level || adaptiveStrategyEvidence(adaptiveContext.learning).level;
+      next = { ...current, status: 'active', action: recommendation, action_mode: actionMode, estimated_minutes: estimatedMinutes, started_at: stamp, deferred_until: null, completed_at: null, defer_reason: '' };
+      history.push({ event: 'started', action: recommendation, action_mode: actionMode, estimated_minutes: estimatedMinutes, adaptive_strategy_mode: appliedStrategy?.mode || 'learning', adaptive_strategy_scope: appliedStrategy?.scope || 'portfolio', adaptive_strategy_evidence: strategyEvidence, at: stamp });
+    } else if (action === 'complete') {
+      const completedAction = current.action || recommendation;
+      const deferredUntil = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+      next = { ...current, status: 'completed', action: completedAction, action_mode: current.action_mode || intelligence.adaptive_next_action?.mode || 'standard', estimated_minutes: current.estimated_minutes ?? intelligence.adaptive_next_action?.estimated_minutes ?? null, completed_at: stamp, deferred_until: deferredUntil, defer_reason: '' };
+      const durationMinutes = current.started_at ? Math.max(0, Math.round((now - Date.parse(current.started_at)) / 60000)) : 0;
+      history.push({ event: 'completed', action: completedAction, action_mode: next.action_mode, estimated_minutes: next.estimated_minutes, at: stamp, hidden_until: deferredUntil, duration_minutes: durationMinutes });
+    } else {
+      const days = Math.max(1, Math.min(30, Number(input.days || 1)));
+      const deferReason = normalizeDeferReason(input.reason);
+      if (input.reason && !deferReason) return json(res, 400, { error: "Unknown defer reason." });
+      const deferredUntil = new Date(now + days * 24 * 60 * 60 * 1000).toISOString();
+      const deferredAction = current.action || recommendation;
+      next = { ...current, status: 'deferred', action: deferredAction, action_mode: current.action_mode || intelligence.adaptive_next_action?.mode || 'standard', estimated_minutes: current.estimated_minutes ?? intelligence.adaptive_next_action?.estimated_minutes ?? null, deferred_until: deferredUntil, defer_reason: deferReason };
+      const durationMinutes = current.started_at ? Math.max(0, Math.round((now - Date.parse(current.started_at)) / 60000)) : 0;
+      history.push({ event: 'deferred', action: deferredAction, action_mode: next.action_mode, estimated_minutes: next.estimated_minutes, defer_reason: deferReason || null, at: stamp, deferred_until: deferredUntil, duration_minutes: durationMinutes });
+    }
+    next.history = history.slice(-100);
+    data[index] = { ...data[index], focus: next, updated_at: stamp };
+    writeData(data);
+    const refreshedContext = adaptiveStrategyContext(data, now);
+    const refreshedStrategy = refreshedContext.byId.get(String(data[index].id)) || refreshedContext.portfolioPolicy;
+    return json(res, 200, { focus: focusStateForOpportunity(data[index], now), intelligence: opportunityIntelligence(data[index], now, refreshedStrategy) });
+  }
+
   if (req.method === "GET" && url.pathname === "/api/intelligence") {
-    return json(res, 200, { generated_at: new Date().toISOString(), queue: intelligenceQueue(readData(), Date.now()) });
+    const data = readData();
+    const now = Date.now();
+    const adaptiveContext = adaptiveStrategyContext(data, now);
+    return json(res, 200, { generated_at: new Date(now).toISOString(), queue: intelligenceQueue(data, now, opportunity => adaptiveContext.byId.get(String(opportunity.id)) || adaptiveContext.portfolioPolicy) });
   }
 
   if (req.method === "GET" && url.pathname === "/api/command-center") {
@@ -1083,4 +1744,4 @@ if (require.main === module) {
   server.listen(PORT, "0.0.0.0", () => console.log(`Atlas ${APP_VERSION} is running on port ${PORT} (${access.enabled ? "access protected" : "local/unlocked"})`));
 }
 
-module.exports = { server, storage, authConfig, isAuthorized, requireValidAuthConfig, pausedFields, withReviewState, emptyExperiment, emptyCheckpoint, emptyIntervention, normalizeInterventions, interventionEvaluation, normalizeCheckpoints, rollupCheckpointMetrics, normalizeExperiment, decisionState, experimentState, nextActionState, experimentHealth, interventionPlan, opportunityIntelligence, intelligenceQueue, commandCenter, portfolioSummary, VALID_STATUSES, FINAL_DECISIONS, LABOR_RATE };
+module.exports = { server, storage, authConfig, isAuthorized, requireValidAuthConfig, pausedFields, withReviewState, emptyExperiment, emptyCheckpoint, emptyIntervention, normalizeInterventions, interventionEvaluation, normalizeCheckpoints, rollupCheckpointMetrics, normalizeExperiment, decisionState, experimentState, nextActionState, experimentHealth, interventionPlan, normalizeDeferReason, FOCUS_DEFER_REASONS, normalizeFocusState, focusStateForOpportunity, focusFrictionDiagnosis, focusFrictionSummary, focusExecutionSummary, focusScorecard, focusFeedbackForOpportunity, adaptiveNextAction, adaptiveActionLearning, adaptiveActionPolicy, adaptiveStrategyEvidence, adaptivePolicyForMode, lastAdaptiveStrategySnapshot, adaptiveStrategyGuardrail, adaptiveStrategyForOpportunity, adaptiveStrategyContext, opportunityIntelligence, intelligenceQueue, commandCenter, portfolioSummary, VALID_STATUSES, FINAL_DECISIONS, LABOR_RATE };

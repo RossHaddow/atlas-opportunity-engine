@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { pausedFields, withReviewState, normalizeExperiment, normalizeCheckpoints, rollupCheckpointMetrics, decisionState, experimentState, nextActionState, experimentHealth, interventionPlan, portfolioSummary, VALID_STATUSES, emptyIntervention, normalizeInterventions, interventionEvaluation, commandCenter, opportunityIntelligence, intelligenceQueue, authConfig, isAuthorized, requireValidAuthConfig } = require("../server");
+const { pausedFields, withReviewState, normalizeExperiment, normalizeCheckpoints, rollupCheckpointMetrics, decisionState, experimentState, nextActionState, experimentHealth, interventionPlan, portfolioSummary, VALID_STATUSES, emptyIntervention, normalizeInterventions, interventionEvaluation, commandCenter, normalizeFocusState, focusExecutionSummary, focusScorecard, focusFeedbackForOpportunity, focusFrictionDiagnosis, focusFrictionSummary, normalizeDeferReason, FOCUS_DEFER_REASONS, adaptiveNextAction, adaptiveActionLearning, adaptiveActionPolicy, adaptiveStrategyEvidence, adaptivePolicyForMode, lastAdaptiveStrategySnapshot, adaptiveStrategyGuardrail, adaptiveStrategyForOpportunity, adaptiveStrategyContext, opportunityIntelligence, intelligenceQueue, authConfig, isAuthorized, requireValidAuthConfig } = require("../server");
 
 test("Paused is a valid status", () => assert.ok(VALID_STATUSES.includes("Paused")));
 
@@ -346,4 +346,582 @@ test("Build 38 intelligence explains recommendations",()=>{
 test("Build 38 command center exposes top focus",()=>{
  const r=commandCenter([{id:1,name:"Test",status:"Testing",atlas_score:80,experiment:{}}],Date.parse("2026-09-06T12:00:00Z"));
  assert.equal(r.top_focus.name,"Test"); assert.equal(r.intelligence.length,1);
+});
+
+
+// Build 39 Intelligence Command Layer
+test("Build 39 mounts Top Focus and Priority Queue UI", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  for (const id of ["intelligence-command", "topFocus", "intelligenceQueue"]) {
+    assert.match(html, new RegExp(`id=["']${id}["']`));
+  }
+});
+
+test("Build 39 renders intelligence from the command center payload", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /function renderIntelligenceCommand\(data\)/);
+  assert.match(js, /data\.top_focus/);
+  assert.match(js, /data\.intelligence/);
+  assert.match(js, /work_priority_score/);
+});
+
+test("Build 39 routes intelligence actions to testing workspace or opportunity editor", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /if \(item\.status === "Testing"\) openExperiment\(item\.id\)/);
+  assert.match(js, /else beginEdit\(item\.id\)/);
+  assert.doesNotMatch(js, /openEdit\(/);
+});
+
+
+// Build 40 Focus Execution Layer
+test("Build 40 active focus receives continuity priority", () => {
+  const now = Date.parse("2026-09-08T12:00:00Z");
+  const base = { id: 1, name: "A", status: "Researching", atlas_score: 70 };
+  const idle = opportunityIntelligence(base, now);
+  const active = opportunityIntelligence({ ...base, focus: { status: "active", action: "Validate", started_at: "2026-09-08T11:00:00Z" } }, now);
+  assert.ok(active.work_priority_score > idle.work_priority_score);
+  assert.equal(active.focus.status, "active");
+  assert.match(active.reasons[0], /already started/i);
+});
+
+test("Build 40 deferred focus leaves the active intelligence queue until due", () => {
+  const now = Date.parse("2026-09-08T12:00:00Z");
+  const rows = [
+    { id: 1, name: "Deferred", status: "Researching", atlas_score: 95, focus: { status: "deferred", deferred_until: "2026-09-09T12:00:00Z" } },
+    { id: 2, name: "Available", status: "Researching", atlas_score: 60 }
+  ];
+  assert.deepEqual(intelligenceQueue(rows, now).map(x => x.name), ["Available"]);
+  assert.equal(normalizeFocusState(rows[0].focus, Date.parse("2026-09-10T12:00:00Z")).status, "idle");
+});
+
+test("Build 40 mounts focus execution controls", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /async function updateFocus\(id, action, days = 1\)/);
+  for (const token of ["data-focus-start", "data-focus-complete", "data-focus-defer", "/focus"]) assert.match(js, new RegExp(token));
+});
+
+// Build 41 Daily Focus Review
+test("Build 41 summarizes today's focus execution", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const rows = [{ id: 1, name: "Bar Kit", status: "Testing", focus: { status: "completed", deferred_until: "2026-09-09T17:00:00Z", history: [
+    { event: "started", action: "Improve listing", at: "2026-09-08T16:00:00Z" },
+    { event: "completed", action: "Improve listing", at: "2026-09-08T17:00:00Z", duration_minutes: 60 }
+  ]}}];
+  const r = focusExecutionSummary(rows, now);
+  assert.equal(r.started, 1);
+  assert.equal(r.completed, 1);
+  assert.equal(r.deferred, 0);
+  assert.equal(r.focused_minutes, 60);
+  assert.equal(r.recent[0].event, "completed");
+});
+
+test("Build 41 command center exposes focus execution review", () => {
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70, focus: { history: [{ event: "started", action: "Validate", at: "2026-09-08T12:00:00Z" }] } }], Date.parse("2026-09-08T15:00:00Z"));
+  assert.equal(r.focus_execution.started, 1);
+  assert.ok(Array.isArray(r.focus_execution.recent));
+});
+
+test("Build 41 mounts Daily Focus Review UI", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  for (const id of ["focus-review", "focusReview"]) assert.match(html, new RegExp(`id=["']${id}["']`));
+  assert.match(js, /function renderFocusReview\(data\)/);
+  assert.match(js, /focus_execution/);
+});
+
+
+// Build 42 — 7-Day Focus Scorecard
+test("Build 42 summarizes seven-day focus behavior", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const rows = [
+    { id: 1, name: "Bar Kit", focus: { history: [
+      { event: "started", action: "Improve listing", at: "2026-09-08T15:00:00Z" },
+      { event: "completed", action: "Improve listing", at: "2026-09-08T16:00:00Z", duration_minutes: 60 },
+      { event: "started", action: "Improve listing", at: "2026-09-07T15:00:00Z" },
+      { event: "deferred", action: "Improve listing", at: "2026-09-07T15:30:00Z", duration_minutes: 30 }
+    ]}},
+    { id: 2, name: "TipTrack", focus: { history: [
+      { event: "started", action: "Check demand", at: "2026-09-01T15:00:00Z" },
+      { event: "completed", action: "Check demand", at: "2026-09-01T16:00:00Z", duration_minutes: 60 }
+    ]}}
+  ];
+  const r = focusScorecard(rows, now);
+  assert.equal(r.window_days, 7);
+  assert.equal(r.started, 2);
+  assert.equal(r.completed, 1);
+  assert.equal(r.deferred, 1);
+  assert.equal(r.focused_minutes, 90);
+  assert.equal(r.active_days, 2);
+  assert.equal(r.follow_through_pct, 50);
+  assert.equal(r.top_opportunities[0].opportunity_name, "Bar Kit");
+});
+
+test("Build 42 identifies repeated deferral behavior", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [1,2,3].flatMap(day => [
+    { event: "started", action: "Validate", at: `2026-09-0${day + 4}T15:00:00Z` },
+    { event: "deferred", action: "Validate", at: `2026-09-0${day + 4}T15:10:00Z`, duration_minutes: 10 }
+  ]);
+  const r = focusScorecard([{ id: 1, name: "Idea", focus: { history } }], now);
+  assert.equal(r.signal, "Deferral pattern");
+  assert.match(r.guidance, /ranking the right work|too large/);
+});
+
+test("Build 42 command center exposes focus scorecard", () => {
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70, focus: { history: [{ event: "started", action: "Validate", at: "2026-09-08T12:00:00Z" }] } }], Date.parse("2026-09-08T15:00:00Z"));
+  assert.equal(r.focus_scorecard.started, 1);
+  assert.equal(r.focus_scorecard.window_days, 7);
+});
+
+test("Build 42 mounts 7-Day Focus Scorecard UI", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  for (const id of ["focus-scorecard", "focusScorecard"]) assert.match(html, new RegExp(`id=["']${id}["']`));
+  assert.match(js, /function renderFocusScorecard\(data\)/);
+  assert.match(js, /focus_scorecard/);
+});
+
+
+// Build 43 — Recommendation Feedback Loop
+test("Build 43 lowers near-term priority after repeated deferrals without changing Atlas score", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [5,6,7].flatMap(day => [
+    { event: "started", action: "Validate demand", at: `2026-09-0${day}T15:00:00Z` },
+    { event: "deferred", action: "Validate demand", at: `2026-09-0${day}T15:10:00Z`, duration_minutes: 10 }
+  ]);
+  const base = { id: 1, name: "Idea", status: "Researching", atlas_score: 80 };
+  const neutral = opportunityIntelligence(base, now);
+  const learned = opportunityIntelligence({ ...base, focus: { history } }, now);
+  assert.equal(learned.atlas_score, 80);
+  assert.ok(learned.work_priority_score < neutral.work_priority_score);
+  assert.equal(learned.execution_feedback.priority_adjustment, -8);
+  assert.match(learned.recommendation, /Shrink the next action/i);
+});
+
+test("Build 43 gives a small execution-confidence boost for strong follow-through", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "completed", action: "A", at: "2026-09-07T15:00:00Z", duration_minutes: 20 },
+    { event: "completed", action: "B", at: "2026-09-08T15:00:00Z", duration_minutes: 20 }
+  ];
+  const feedback = focusFeedbackForOpportunity({ id: 1, focus: { history } }, now);
+  assert.equal(feedback.signal, "Strong follow-through");
+  assert.equal(feedback.priority_adjustment, 4);
+  assert.equal(feedback.follow_through_pct, 100);
+});
+
+test("Build 43 command center exposes recommendation feedback", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70, focus: { history: [
+    { event: "completed", action: "A", at: "2026-09-07T15:00:00Z" },
+    { event: "completed", action: "B", at: "2026-09-08T15:00:00Z" }
+  ] } }], now);
+  assert.equal(r.recommendation_feedback.length, 1);
+  assert.equal(r.recommendation_feedback[0].signal, "Strong follow-through");
+});
+
+test("Build 43 mounts Recommendation Feedback UI", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  for (const id of ["recommendation-feedback", "recommendationFeedback"]) assert.match(html, new RegExp(`id=["']${id}["']`));
+  assert.match(js, /function renderRecommendationFeedback\(data\)/);
+  assert.match(js, /recommendation_feedback/);
+});
+
+
+// Build 44 — Adaptive Next Action
+test("Build 44 creates a concrete micro-action after repeated deferrals", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [5,6,7].flatMap(day => [
+    { event: "started", action: "Validate demand", at: `2026-09-0${day}T15:00:00Z` },
+    { event: "deferred", action: "Validate demand", at: `2026-09-0${day}T15:10:00Z`, duration_minutes: 10 }
+  ]);
+  const x = opportunityIntelligence({ id: 1, name: "Idea", status: "Researching", atlas_score: 80, focus: { history } }, now);
+  assert.equal(x.adaptive_next_action.mode, "micro");
+  assert.equal(x.adaptive_next_action.estimated_minutes, 15);
+  assert.match(x.adaptive_next_action.action, /one concrete demand signal/i);
+  assert.match(x.strategic_recommendation, /demand validation/i);
+});
+
+test("Build 44 preserves a standard action when execution friction is absent", () => {
+  const x = adaptiveNextAction(
+    { id: 1, name: "Idea", status: "Researching", atlas_score: 80 },
+    "Finish demand validation and move this toward a 30-day test.",
+    { priority_adjustment: 0 },
+    Date.parse("2026-09-08T18:00:00Z")
+  );
+  assert.equal(x.mode, "standard");
+  assert.equal(x.estimated_minutes, null);
+  assert.match(x.action, /Finish demand validation/);
+});
+
+test("Build 44 tailors a deferred Testing opportunity to its immediate workspace step", () => {
+  const x = adaptiveNextAction(
+    { id: 1, name: "Test", status: "Testing", atlas_score: 80, experiment: {} },
+    "Complete the current test setup.",
+    { priority_adjustment: -4 },
+    Date.parse("2026-09-08T18:00:00Z")
+  );
+  assert.equal(x.mode, "micro");
+  assert.match(x.action, /15 minutes/i);
+  assert.match(x.action, /Testing Workspace|step/i);
+});
+
+test("Build 44 renders the adaptive next action in Top Focus and the queue", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /adaptive_next_action/);
+  assert.match(js, /Do next/);
+  assert.match(js, /estimated_minutes/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "public", "style.css"), "utf8");
+  assert.match(css, /\.adaptive-next-action/);
+});
+
+
+// Build 45 — Adaptive Action Learning
+test("Build 45 measures micro-action follow-through against standard actions", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const rows = [{ id: 1, name: "Bar Kit", focus: { history: [
+    { event: "completed", action: "Micro A", action_mode: "micro", at: "2026-09-08T15:00:00Z", duration_minutes: 12 },
+    { event: "completed", action: "Micro B", action_mode: "micro", at: "2026-09-07T15:00:00Z", duration_minutes: 14 },
+    { event: "deferred", action: "Standard A", action_mode: "standard", at: "2026-09-06T15:00:00Z", duration_minutes: 25 },
+    { event: "completed", action: "Standard B", action_mode: "standard", at: "2026-09-05T15:00:00Z", duration_minutes: 30 }
+  ]}}];
+  const r = adaptiveActionLearning(rows, now);
+  assert.equal(r.micro.follow_through_pct, 100);
+  assert.equal(r.standard.follow_through_pct, 50);
+  assert.equal(r.micro_follow_through_lift_pct, 50);
+  assert.equal(r.signal, "Micro-actions are helping");
+});
+
+test("Build 45 does not overclaim with too little comparative history", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const r = adaptiveActionLearning([{ id: 1, focus: { history: [
+    { event: "completed", action: "Micro", action_mode: "micro", at: "2026-09-08T15:00:00Z", duration_minutes: 10 }
+  ]}}], now);
+  assert.equal(r.micro_follow_through_lift_pct, null);
+  assert.equal(r.signal, "Not enough adaptive data");
+});
+
+test("Build 45 command center exposes adaptive action learning", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70, focus: { history: [
+    { event: "completed", action: "A", action_mode: "micro", at: "2026-09-08T12:00:00Z", duration_minutes: 10 },
+    { event: "deferred", action: "B", action_mode: "micro", at: "2026-09-07T12:00:00Z", duration_minutes: 10 }
+  ] } }], now);
+  assert.equal(r.adaptive_action_learning.window_days, 14);
+  assert.equal(r.adaptive_action_learning.micro.resolved, 2);
+});
+
+test("Build 45 mounts Adaptive Action Learning UI", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  for (const id of ["adaptive-learning", "adaptiveActionLearning"]) assert.match(html, new RegExp(`id=["']${id}["']`));
+  assert.match(js, /function renderAdaptiveActionLearning\(data\)/);
+  assert.match(js, /adaptive_action_learning/);
+});
+
+
+// Build 46 — Adaptive Strategy Controller
+test("Build 46 promotes micro-actions when adaptive learning shows they help", () => {
+  const policy = adaptiveActionPolicy({ signal: "Micro-actions are helping" });
+  assert.equal(policy.mode, "use_micro");
+  const action = adaptiveNextAction(
+    { id: 1, name: "Idea", status: "Researching" },
+    "Finish demand validation.",
+    { priority_adjustment: -4 },
+    Date.parse("2026-09-08T18:00:00Z"),
+    policy
+  );
+  assert.equal(action.mode, "micro");
+});
+
+test("Build 46 pauses micro-actions when learning shows they are not helping", () => {
+  const policy = adaptiveActionPolicy({ signal: "Micro-actions are not helping yet" });
+  assert.equal(policy.mode, "pause_micro");
+  const action = adaptiveNextAction(
+    { id: 1, name: "Idea", status: "Researching" },
+    "Finish demand validation.",
+    { priority_adjustment: -8 },
+    Date.parse("2026-09-08T18:00:00Z"),
+    policy
+  );
+  assert.equal(action.mode, "standard");
+  assert.match(action.reason, /not improving follow-through|timing|priority/i);
+});
+
+test("Build 46 uses micro-actions selectively when there is no clear advantage", () => {
+  const policy = adaptiveActionPolicy({ signal: "No clear micro-action advantage" });
+  const mild = adaptiveNextAction({ status: "Researching" }, "Validate demand.", { priority_adjustment: -4 }, Date.parse("2026-09-08T18:00:00Z"), policy);
+  const strong = adaptiveNextAction({ status: "Researching" }, "Validate demand.", { priority_adjustment: -8 }, Date.parse("2026-09-08T18:00:00Z"), policy);
+  assert.equal(mild.mode, "standard");
+  assert.equal(strong.mode, "micro");
+});
+
+test("Build 46 command center exposes and applies the adaptive strategy", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "completed", action_mode: "micro", action: "m1", at: "2026-09-08T12:00:00Z" },
+    { event: "completed", action_mode: "micro", action: "m2", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", action: "s1", at: "2026-09-06T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", action: "s2", at: "2026-09-05T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", action: "s3", at: "2026-09-04T12:00:00Z" }
+  ];
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 80, focus: { history } }], now);
+  assert.equal(r.adaptive_action_policy.mode, "use_micro");
+  assert.equal(r.top_focus.adaptive_next_action.mode, "micro");
+});
+
+test("Build 46 renders the adaptive strategy in the learning panel", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /adaptive_action_policy/);
+  assert.match(js, /Current adaptive strategy/);
+});
+
+
+// Build 47 — Opportunity-Aware Adaptive Strategy
+test("Build 47 uses opportunity-specific adaptive evidence when enough local history exists", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "completed", action_mode: "micro", action: "m1", at: "2026-09-08T12:00:00Z" },
+    { event: "completed", action_mode: "micro", action: "m2", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", action: "s1", at: "2026-09-06T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", action: "s2", at: "2026-09-05T12:00:00Z" }
+  ];
+  const opportunity = { id: 7, name: "Local Winner", status: "Researching", focus: { history } };
+  const portfolioLearning = { signal: "Micro-actions are not helping yet" };
+  const strategy = adaptiveStrategyForOpportunity(opportunity, portfolioLearning, adaptiveActionPolicy(portfolioLearning), now);
+  assert.equal(strategy.scope, "opportunity");
+  assert.equal(strategy.mode, "use_micro");
+  assert.equal(strategy.opportunity_id, 7);
+});
+
+test("Build 47 falls back to portfolio strategy when local evidence is insufficient", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const opportunity = { id: 8, name: "New Idea", status: "Researching", focus: { history: [
+    { event: "completed", action_mode: "micro", action: "m1", at: "2026-09-08T12:00:00Z" }
+  ] } };
+  const portfolioLearning = { signal: "Micro-actions are not helping yet" };
+  const strategy = adaptiveStrategyForOpportunity(opportunity, portfolioLearning, adaptiveActionPolicy(portfolioLearning), now);
+  assert.equal(strategy.scope, "portfolio");
+  assert.equal(strategy.mode, "pause_micro");
+});
+
+test("Build 47 can apply different adaptive strategies to different opportunities", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const helping = [
+    { event: "completed", action_mode: "micro", at: "2026-09-08T12:00:00Z" },
+    { event: "completed", action_mode: "micro", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", at: "2026-09-06T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", at: "2026-09-05T12:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-04T12:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-03T12:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-02T12:00:00Z" }
+  ];
+  const hurting = [
+    { event: "deferred", action_mode: "micro", at: "2026-09-08T11:00:00Z" },
+    { event: "deferred", action_mode: "micro", at: "2026-09-07T11:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-06T11:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-05T11:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-04T11:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-03T11:00:00Z" },
+    { event: "deferred", action: "later", at: "2026-09-02T11:00:00Z" }
+  ];
+  const rows = [
+    { id: 1, name: "Micro Helps", status: "Researching", atlas_score: 80, focus: { history: helping } },
+    { id: 2, name: "Micro Hurts", status: "Researching", atlas_score: 79, focus: { history: hurting } }
+  ];
+  const r = commandCenter(rows, now);
+  const a = r.intelligence.find(x => x.id === 1);
+  const b = r.intelligence.find(x => x.id === 2);
+  assert.equal(a.adaptive_strategy.scope, "opportunity");
+  assert.equal(a.adaptive_strategy.mode, "use_micro");
+  assert.equal(b.adaptive_strategy.scope, "opportunity");
+  assert.equal(b.adaptive_strategy.mode, "pause_micro");
+});
+
+test("Build 47 command center exposes adaptive strategy profiles", () => {
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70 }], Date.parse("2026-09-08T18:00:00Z"));
+  assert.ok(Array.isArray(r.adaptive_strategy_profiles));
+  assert.equal(r.adaptive_strategy_profiles[0].scope, "portfolio");
+  assert.equal(r.top_focus.adaptive_strategy.scope, "portfolio");
+});
+
+test("Build 47 renders Top Focus strategy scope in the adaptive learning panel", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /top_focus\?\.adaptive_strategy/);
+  assert.match(js, /Top Focus strategy/);
+  assert.match(js, /scope_label/);
+});
+
+
+test("Build 48 classifies adaptive strategy evidence without fake precision", () => {
+  assert.equal(adaptiveStrategyEvidence({ micro: { resolved: 1 }, standard: { resolved: 2 } }).level, "Insufficient");
+  assert.equal(adaptiveStrategyEvidence({ micro: { resolved: 2 }, standard: { resolved: 3 } }).level, "Provisional");
+  assert.equal(adaptiveStrategyEvidence({ micro: { resolved: 4 }, standard: { resolved: 6 } }).level, "Established");
+  assert.equal(adaptiveStrategyEvidence({ micro: { resolved: 8 }, standard: { resolved: 9 } }).level, "Strong");
+});
+
+test("Build 48 reports evidence needed for the next durability tier", () => {
+  const evidence = adaptiveStrategyEvidence({ micro: { resolved: 2 }, standard: { resolved: 3 } });
+  assert.equal(evidence.target_per_mode, 4);
+  assert.equal(evidence.remaining_micro, 2);
+  assert.equal(evidence.remaining_standard, 1);
+  assert.equal(evidence.balanced_sample, true);
+});
+
+test("Build 48 opportunity strategy exposes local and portfolio evidence", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "completed", action_mode: "micro", at: "2026-09-08T12:00:00Z" },
+    { event: "completed", action_mode: "micro", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", at: "2026-09-06T12:00:00Z" },
+    { event: "deferred", action_mode: "standard", at: "2026-09-05T12:00:00Z" }
+  ];
+  const opportunity = { id: 9, name: "Evidence Test", status: "Researching", focus: { history } };
+  const portfolioLearning = adaptiveActionLearning([opportunity], now);
+  const strategy = adaptiveStrategyForOpportunity(opportunity, portfolioLearning, adaptiveActionPolicy(portfolioLearning), now);
+  assert.equal(strategy.scope, "opportunity");
+  assert.equal(strategy.evidence.level, "Provisional");
+  assert.equal(strategy.portfolio_evidence.level, "Provisional");
+});
+
+test("Build 48 command center and UI expose strategy evidence", () => {
+  const r = commandCenter([{ id: 1, name: "Idea", status: "Researching", atlas_score: 70 }], Date.parse("2026-09-08T15:00:00Z"));
+  assert.equal(r.adaptive_strategy_evidence.level, "Insufficient");
+  assert.equal(r.top_focus.adaptive_strategy.evidence.level, "Insufficient");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /Strategy evidence/);
+  assert.match(js, /remaining_micro/);
+});
+
+
+test("Build 49 holds an established strategy when the contradictory swing is too small", () => {
+  const opportunity = { id: 49, focus: { history: [
+    { event: "started", adaptive_strategy_mode: "use_micro", adaptive_strategy_scope: "opportunity", adaptive_strategy_evidence: "Established", at: "2026-09-07T12:00:00Z" }
+  ]}};
+  const result = adaptiveStrategyGuardrail(
+    opportunity,
+    adaptivePolicyForMode("pause_micro"),
+    { level: "Established" },
+    { micro_follow_through_lift_pct: -25 }
+  );
+  assert.equal(result.policy.mode, "use_micro");
+  assert.equal(result.stability.held, true);
+  assert.equal(result.stability.candidate_mode, "pause_micro");
+});
+
+test("Build 49 accepts a strategy reversal when equally deep evidence is strongly contradictory", () => {
+  const opportunity = { id: 49, focus: { history: [
+    { event: "started", adaptive_strategy_mode: "use_micro", adaptive_strategy_scope: "opportunity", adaptive_strategy_evidence: "Established", at: "2026-09-07T12:00:00Z" }
+  ]}};
+  const result = adaptiveStrategyGuardrail(
+    opportunity,
+    adaptivePolicyForMode("pause_micro"),
+    { level: "Established" },
+    { micro_follow_through_lift_pct: -40 }
+  );
+  assert.equal(result.policy.mode, "pause_micro");
+  assert.equal(result.stability.held, false);
+});
+
+test("Build 49 remembers the last strategy actually applied at focus start", () => {
+  const snapshot = lastAdaptiveStrategySnapshot({ focus: { history: [
+    { event: "completed", at: "2026-09-07T13:00:00Z" },
+    { event: "started", adaptive_strategy_mode: "selective_micro", adaptive_strategy_scope: "opportunity", adaptive_strategy_evidence: "Strong", at: "2026-09-07T12:00:00Z" }
+  ]}});
+  assert.equal(snapshot.mode, "selective_micro");
+  assert.equal(snapshot.evidence_level, "Strong");
+});
+
+test("Build 49 command center exposes strategy stability state", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "started", adaptive_strategy_mode: "use_micro", adaptive_strategy_scope: "opportunity", adaptive_strategy_evidence: "Established", at: "2026-09-08T10:00:00Z" },
+    { event: "completed", action_mode: "micro", at: "2026-09-08T12:00:00Z" },
+    { event: "completed", action_mode: "micro", at: "2026-09-07T12:00:00Z" },
+    { event: "completed", action_mode: "micro", at: "2026-09-06T12:00:00Z" },
+    { event: "deferred", action_mode: "micro", at: "2026-09-05T12:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-08T11:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-07T11:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-06T11:00:00Z" },
+    { event: "completed", action_mode: "standard", at: "2026-09-05T11:00:00Z" }
+  ];
+  const r = commandCenter([{ id: 1, name: "Stable Idea", status: "Researching", atlas_score: 80, focus: { history } }], now);
+  assert.ok(r.top_focus.adaptive_strategy.stability);
+  assert.equal(typeof r.top_focus.adaptive_strategy.stability.held, "boolean");
+});
+
+test("Build 49 renders the strategy stability guardrail in the adaptive panel", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(js, /Strategy stability/);
+  assert.match(js, /Strategy held for stability/);
+  assert.match(js, /stability\.reason/);
+});
+
+
+test("Build 50 normalizes structured defer reasons", () => {
+  assert.equal(normalizeDeferReason("too_big"), "too_big");
+  assert.equal(normalizeDeferReason("BLOCKED"), "blocked");
+  assert.equal(normalizeDeferReason("not-a-reason"), "");
+  assert.equal(FOCUS_DEFER_REASONS.low_priority, "Does not feel worth prioritizing");
+});
+
+test("Build 50 diagnoses repeated action-size friction", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const opportunity = { id: 50, focus: { history: [
+    { event: "deferred", defer_reason: "too_big", at: "2026-09-08T12:00:00Z" },
+    { event: "deferred", defer_reason: "too_big", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", defer_reason: "timing", at: "2026-09-06T12:00:00Z" }
+  ]}};
+  const diagnosis = focusFrictionDiagnosis(opportunity, now);
+  assert.equal(diagnosis.signal, "Action-size friction");
+  assert.equal(diagnosis.response, "shrink");
+  assert.equal(diagnosis.dominant_reason, "too_big");
+});
+
+test("Build 50 does not mistake blockers for oversized work", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const history = [
+    { event: "deferred", defer_reason: "blocked", at: "2026-09-08T12:00:00Z" },
+    { event: "deferred", defer_reason: "blocked", at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", defer_reason: "blocked", at: "2026-09-06T12:00:00Z" }
+  ];
+  const opportunity = { id: 50, name: "Blocked", status: "Researching", atlas_score: 80, focus: { history } };
+  const feedback = focusFeedbackForOpportunity(opportunity, now);
+  const intelligence = opportunityIntelligence(opportunity, now, adaptivePolicyForMode("use_micro"));
+  assert.equal(feedback.friction_diagnosis.response, "blocked");
+  assert.equal(feedback.priority_adjustment, -2);
+  assert.equal(intelligence.adaptive_next_action.mode, "standard");
+  assert.match(intelligence.adaptive_next_action.reason, /blocker-driven/i);
+});
+
+test("Build 50 treats priority mismatch more strongly than timing friction", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const rows = reason => ({ id: reason, focus: { history: [
+    { event: "deferred", defer_reason: reason, at: "2026-09-08T12:00:00Z" },
+    { event: "deferred", defer_reason: reason, at: "2026-09-07T12:00:00Z" },
+    { event: "deferred", defer_reason: reason, at: "2026-09-06T12:00:00Z" }
+  ]}});
+  const timing = focusFeedbackForOpportunity(rows("timing"), now);
+  const priority = focusFeedbackForOpportunity(rows("low_priority"), now);
+  assert.equal(timing.priority_adjustment, -3);
+  assert.equal(priority.priority_adjustment, -10);
+  assert.equal(priority.friction_diagnosis.signal, "Priority mismatch");
+});
+
+test("Build 50 command center and UI expose friction diagnosis", () => {
+  const now = Date.parse("2026-09-08T18:00:00Z");
+  const rows = [{ id: 1, name: "Idea", status: "Researching", atlas_score: 70, focus: { history: [
+    { event: "deferred", defer_reason: "unclear", at: "2026-09-08T12:00:00Z" },
+    { event: "deferred", defer_reason: "unclear", at: "2026-09-07T12:00:00Z" }
+  ]}}];
+  const r = commandCenter(rows, now);
+  assert.equal(r.focus_friction.reasoned_deferred, 2);
+  assert.equal(r.focus_friction.dominant_reason, "unclear");
+  assert.equal(r.recommendation_feedback[0].friction_diagnosis.signal, "Clarity friction");
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+  assert.match(html, /Execution Friction Diagnosis/);
+  assert.match(js, /data-focus-defer-reason/);
+  assert.match(js, /focus_friction/);
 });

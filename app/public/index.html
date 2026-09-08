@@ -5,24 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Atlas Opportunity Engine</title>
   <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="/daily-focus.css">
 </head>
 <body>
   <main class="dashboard">
     <header><p class="eyebrow">PERSONAL INTELLIGENCE & OPPORTUNITY SYSTEM</p><h1>ATLAS</h1></header>
-
-    <section id="daily-focus" class="card daily-focus-card">
-      <div class="section-heading">
-        <div><p class="eyebrow">TODAY'S PLAN</p><h2 id="dailyFocusHeadline">Building today’s focus…</h2></div>
-        <span id="dailyFocusMeta" class="daily-focus-meta">Loading…</span>
-      </div>
-      <div class="daily-focus-grid">
-        <div class="daily-focus-column"><h3>Primary</h3><div id="dailyFocusPrimary"></div></div>
-        <div class="daily-focus-column"><h3>Supporting Moves</h3><div id="dailyFocusSupporting"></div></div>
-        <div class="daily-focus-column"><h3>Defer</h3><div id="dailyFocusDefer"></div></div>
-      </div>
-      <div id="dailyFocusRules" class="daily-focus-rules"></div>
-    </section>
 
     <section id="executive-briefing" class="command-center">
       <div class="command-header">
@@ -33,6 +19,36 @@
         <span id="commandUpdated">Updating…</span>
       </div>
       <div id="commandKpis" class="command-kpis"></div>
+      <section id="intelligence-command" class="intelligence-command">
+        <div class="top-focus-panel">
+          <div class="panel-title"><h3>Top Focus</h3><span>Atlas's #1 use of your time</span></div>
+          <div id="topFocus" class="top-focus-content"><div class="command-empty"><strong>Ranking portfolio…</strong><span>Atlas is calculating your highest-leverage move.</span></div></div>
+        </div>
+        <div class="priority-queue-panel">
+          <div class="panel-title"><h3>Priority Queue</h3><span>Next highest-leverage opportunities</span></div>
+          <div id="intelligenceQueue" class="intelligence-queue"></div>
+        </div>
+      </section>
+      <section id="focus-review" class="focus-review-panel">
+        <div class="panel-title"><h3>Today’s Focus Review</h3><span>Execution, not just recommendations</span></div>
+        <div id="focusReview" class="focus-review-content"></div>
+      </section>
+      <section id="focus-scorecard" class="focus-scorecard-panel">
+        <div class="panel-title"><h3>7-Day Focus Scorecard</h3><span>Is Atlas turning into completed work?</span></div>
+        <div id="focusScorecard" class="focus-scorecard-content"></div>
+      </section>
+      <section id="focus-friction" class="focus-friction-panel">
+        <div class="panel-title"><h3>Execution Friction Diagnosis</h3><span>Why recommended work gets deferred</span></div>
+        <div id="focusFriction" class="focus-friction-content"></div>
+      </section>
+      <section id="adaptive-learning" class="adaptive-learning-panel">
+        <div class="panel-title"><h3>Adaptive Action Learning</h3><span>Are smaller actions improving follow-through?</span></div>
+        <div id="adaptiveActionLearning" class="adaptive-learning-content"></div>
+      </section>
+      <section id="recommendation-feedback" class="recommendation-feedback-panel">
+        <div class="panel-title"><h3>Recommendation Feedback</h3><span>How execution is changing near-term priority</span></div>
+        <div id="recommendationFeedback" class="recommendation-feedback-content"></div>
+      </section>
       <div class="command-grid">
         <div class="command-panel">
           <div class="panel-title"><h3>What Needs You</h3><span id="attentionCount">0 open</span></div>
@@ -119,6 +135,5 @@
     </form>
   </dialog>
   <script src="/app.js"></script>
-  <script src="/daily-focus.js"></script>
 </body>
 </html>

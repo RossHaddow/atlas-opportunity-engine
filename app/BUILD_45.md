@@ -1,33 +1,28 @@
-# Atlas Build 45 — Adaptive Daily Capacity
+# Atlas Build 45 — Adaptive Action Learning
 
 Status: COMPLETE
 
-Build 45 uses Atlas execution history to set a realistic daily workload instead of always assuming three meaningful moves.
+Build 45 closes the loop on Build 44 by measuring whether smaller adaptive actions actually improve execution.
 
 ## What changed
+- Version 1.14.0.
+- Focus sessions now persist `action_mode` (`micro` or `standard`) and the adaptive estimated minutes alongside the recorded action.
+- Completion and deferral history inherit the action mode from the active focus session, allowing Atlas to measure the outcome of the exact recommendation type it gave.
+- Adds a rolling 14-day Adaptive Action Learning comparison.
+- Compares micro-action vs standard-action resolved sessions using completion-vs-deferral follow-through.
+- Tracks average resolution minutes for each action type when timing data exists.
+- Reports micro-action follow-through lift in percentage points once both groups have enough history.
+- Requires at least two resolved micro sessions and two resolved standard sessions before claiming a comparative effect.
+- Surfaces learning signals: Micro-actions are helping, No clear micro-action advantage, Micro-actions are not helping yet, Adaptive baseline forming, or Not enough adaptive data.
+- Adds an Adaptive Action Learning panel to the Executive Briefing.
+- Exposes the learning payload through `/api/command-center`.
 
-- Version bumped to 2.2.0.
-- Adds `adaptiveCapacity()` to the Daily Focus engine.
-- Daily capacity can now be 1, 2, or 3 meaningful moves.
-- Atlas keeps the three-move default until at least five execution outcomes exist.
-- Strong completion history keeps capacity at three.
-- Mixed completion/friction history reduces capacity to two.
-- High execution friction can reduce capacity to one.
-- Recurring blockers and repeated deferrals influence capacity decisions.
-- Today’s Plan now displays the current adaptive capacity and why Atlas selected it.
-- Work outside the current capacity is deliberately held in the defer column instead of competing for attention.
-- Execution Learning now exposes the adaptive-capacity decision and confidence level.
-- Adds regression tests for learning mode, 1/2/3 move capacity, and Daily Focus enforcement.
-- Production startup now uses `server-build45.js`.
+## Product intent
+Build 44 made recommendations smaller when execution friction appeared. Build 45 measures whether that intervention works. This prevents Atlas from assuming that smaller tasks are always better: if micro-actions fail to improve follow-through, Atlas can later reconsider timing, task choice, or the opportunity itself instead of shrinking work indefinitely.
 
-## Current rules
-
-Atlas needs at least five execution outcomes before adapting the default workload.
-
-- Completion rate 75% or higher with no recurring friction: 3 moves.
-- Completion rate 50–74%, or meaningful recurring friction: 2 moves.
-- Completion rate below 50%, or recurring friction combined with weak completion: 1 move.
-
-These rules are intentionally conservative. Build 45 is meant to protect focus, not punish a single bad day.
-
-Build 45 is the first Atlas build where historical execution behavior directly changes tomorrow’s workload.
+## Verification
+- `npm run check` passes.
+- 72/72 automated tests pass.
+- Comparative claims require sufficient samples in both action modes.
+- Existing historical focus events without action-mode metadata are ignored for the comparison rather than guessed.
+- Core Atlas opportunity scores remain untouched.
