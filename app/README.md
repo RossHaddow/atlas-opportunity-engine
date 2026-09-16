@@ -1,5 +1,7 @@
 # Atlas Opportunity Engine
 
+**Current checkpoint: Build 90 + Travel Build 8 — v1.67.0 (Trip Shortlist & Booking Decision)**
+
 Recovered Opportunity Engine with Builds 1 through 10 completed.
 
 ## Run on Windows
@@ -263,3 +265,197 @@ The live dashboard now opens with a Daily Executive Briefing that converts portf
 - Uses friction type to tune near-term priority feedback: blockers and timing issues receive lighter penalties, while repeated priority mismatch receives a stronger one.
 - Keeps micro-actions for genuine action-size friction, creates a clarification micro-step for unclear work, and avoids shrinking work when the real problem is a blocker, timing, or weak priority pull.
 - Preserves legacy focus history and keeps defer reasons optional.
+
+
+## Build 56 — Execution Capacity Fit
+Atlas now learns typical focus-block size from timed outcomes and flags whether timed recommendations fit, stretch, or exceed recent execution capacity.
+
+
+## Build 57 — Next Work Block Planner
+Atlas now converts learned execution capacity into an actual work-slot recommendation. Choose an available time window and Atlas ranks the best executable action that fits, time-boxes untimed strategic work, offers alternatives, and can start the exact planned block as tracked focus work. See `BUILD_57.md`.
+
+## Build 58
+Daily Work Plan sequences priority work into a realistic daily execution budget using learned capacity and exact tracked work blocks.
+
+## Build 59 — Daily Plan Execution Learning
+Atlas now compares Daily Work Plan recommendations against actual completion, deferral, and time spent, then surfaces conservative plan-fit signals so future sequencing can become more realistic.
+
+## Build 60 — Adaptive Daily Plan Sizing
+Atlas now converts Daily Plan Execution Learning into actual plan-density changes. Overpacked history leaves deliberate breathing room, mixed-fit history stays conservative, and healthy execution can use the full user-provided time window. The user's available time remains a hard cap. See `BUILD_60.md`.
+
+
+## Build 61
+Daily Plan Density Learning measures whether lighter, conservative, or full daily planning density produces the strongest execution follow-through before Atlas adapts the controller further.
+## Build 62
+
+Build 62 adds a guarded learned daily-plan density controller. Atlas can now promote an Established/Strong 70%, 85%, or 100% density into the actual Daily Work Plan while stability guardrails prevent small rolling-window swings from flipping the controller.
+
+
+## Build 63 — Daily Plan Time-of-Day Learning
+Atlas now learns whether Daily Work Plan blocks complete more reliably in the morning, afternoon, evening, or late night. It preserves the start window through each outcome, requires evidence before naming a preferred window, and keeps the preference advisory so it never overrides the user's actual available time. See `BUILD_63.md`.
+
+## Build 64 — Time-Window-Aware Daily Plan Priority
+Atlas now uses established opportunity-specific execution history from the current morning, afternoon, evening, or late-night window to modestly reorder the Daily Work Plan. Thin evidence stays neutral, and the adjustment never changes Atlas Score. See `BUILD_64.md`.
+
+## Build 65 — Time-Window Work-Type Fit Learning
+Atlas now learns whether different kinds of planned work (research, creation, editing, setup, review, outreach, or general execution) perform better or worse in the current time-of-day window. Work-type fit remains neutral until at least four matching Daily Work Plan blocks are resolved, then applies only a modest planning-order adjustment without changing Atlas Score. See `BUILD_65.md`.
+
+## Build 66 — Daily Plan Composition Learning
+Atlas now compares focused work-type plan days against mixed work-type plan days inside the current execution window. It requires meaningful comparative evidence before applying a small ±2 sequencing nudge, allowing Atlas to learn whether continuity or variety improves follow-through without changing Atlas Score, plan density, or the user's time cap. See `BUILD_66.md`.
+
+## Build 67 — Daily Plan Sequence Learning
+
+Build 67 adds evidence-gated sequence learning to Daily Work Plan. Atlas can now learn whether specific work types perform differently first, middle, or last and whether repeated work-type transitions improve or weaken follow-through. Sequence influence is capped at ±3 and never changes Atlas Score or the user's time cap. See `BUILD_67.md`.
+
+## Build 68 checkpoint — Daily Plan Depth & Fatigue Learning
+
+Build 68 (v1.37.0) teaches Atlas whether follow-through deteriorates deeper into a Daily Work Plan. Atlas compares blocks 1–2 against blocks 3+ within the current execution window and only shortens the plan after established comparative evidence. Established fatigue caps the plan at 3 blocks; Strong evidence on both bands can cap it at 2. Atlas Score and the user's hard time window remain unchanged. See `BUILD_68.md`.
+
+## Build 69 checkpoint — Plan-Depth Recovery & Probe Controller
+
+Build 69 (v1.38.0) prevents evidence-backed fatigue protection from becoming permanent after execution improves. Atlas now watches a recent 14-day recovery window, can cautiously relax a 3-block fatigue cap when deep execution rebounds, stages recovery from a strong 2-block cap through 3 blocks first, and can temporarily allow a controlled third-block probe when strong early execution persists but the cap itself has prevented fresh deep-block evidence. Atlas Score, strategic priority, learned density, and the user's hard time window remain unchanged. See `BUILD_69.md`.
+
+## Build 70 checkpoint — Adaptive Work-Block Sizing
+
+Build 70 (v1.39.0) adds evidence-gated work-block sizing to Daily Work Plan. Atlas now compares short, standard, and long planned blocks separately for early versus deep plan positions and can gently move the normal block target toward the better-performing duration only after two comparable bands have Established evidence and at least a 15-point follow-through gap. Each adjustment is capped at 15 minutes, and Atlas Score, learned density, fatigue/recovery protection, and the user's hard time window remain unchanged. See `BUILD_70.md`.
+
+
+## Build 71 — Actual-Duration Block Calibration
+
+Atlas now compares planned versus actual Daily Work Plan duration and uses evidence-gated ±5 minute calibration to keep learned block sizes realistic. See `BUILD_71.md`.
+
+
+## Build 72 — Opportunity Radar Foundation
+
+Atlas now has a separate pre-portfolio Opportunity Radar for scoring, staging, dismissing, and promoting money-making candidates into Researching. See `BUILD_72.md`.
+
+
+## Build 73 — Radar Evidence Quality & Duplicate Detection
+
+Opportunity Radar now weights evidence quality and type, prevents weak assumptions from advancing candidates, and checks both Radar and the active portfolio for duplicate ideas before adding them. See `BUILD_73.md`.
+
+
+## Build 74 — Radar Next-Action Recommendations
+
+Opportunity Radar now diagnoses validation gaps and gives every candidate a concrete next action, including demand validation, market validation, duplicate review, investigation, or readiness to advance. See `BUILD_74.md`.
+
+
+## Build 75 — Candidate-to-Test Blueprint
+
+Ready Radar candidates now receive a bounded 30-day experiment blueprint before promotion, and unresolved candidates are blocked from entering Researching unless explicitly overridden. See `BUILD_75.md`.
+
+
+## Build 76 — Unified Money-Move Queue
+
+Atlas now ranks Opportunity Radar recommendations and active-portfolio work in one Next Money Moves queue, keeping urgent portfolio obligations ahead of new candidate work. See `BUILD_76.md`.
+
+
+## Build 77 — Radar Refresh Cadence
+
+Opportunity Radar now schedules candidate reviews based on readiness and priority, identifies stale candidates, and records explicit reviews so good ideas stay current without cluttering daily attention. See `BUILD_77.md`.
+
+
+## Build 78 — Discovery Intake & Source Performance
+
+Opportunity Radar can now ingest structured discovery batches, reject duplicate ideas before they enter the pipeline, preserve discovery provenance, and measure which discovery sources actually produce strong candidates. See `BUILD_78.md`.
+
+
+## Build 79 — Discovery Source Controller
+
+Atlas now decides where future opportunity discovery effort should go next. Discovery sources move between Explore, Exploit, Maintain, Probe, and Hold modes based on source yield, candidate quality, freshness, and sample size. See `BUILD_79.md`.
+
+
+## Build 80 — Discovery Job Planner
+
+Atlas now converts the Discovery Source Controller into adapter-ready search jobs containing source priority, concrete queries, adapter instructions, batch metadata, evidence expectations, candidate limits, and the exact discovery-intake contract. See `BUILD_80.md`.
+
+
+## Build 81 — Discovery Runner
+
+Atlas now turns planned discovery jobs into persistent execution runs with a provider-neutral external handoff contract, run history, success/failure accounting, and automatic candidate intake on completion. See `BUILD_81.md`.
+
+
+## Build 82 — Live Discovery HTTP Adapter
+
+- Adds an optional in-process HTTP discovery executor while preserving Build 81 external handoffs when no adapter is configured.
+- Adds `ATLAS_DISCOVERY_HTTP_URL`, optional bearer token, and bounded timeout configuration.
+- `POST /api/radar/discovery-jobs/run` can now use `{ "execute": true }` to execute a job, ingest candidates, apply existing duplicate detection, and close the persistent run in one request.
+- Adds `GET /api/radar/discovery-adapter` and exposes adapter readiness through `GET /api/radar`.
+- Live adapter responses are capped to the job's candidate allowance and must return at least one candidate to count as a successful execution.
+- Provider errors and timeouts close the run as `Failed` instead of leaving orphaned `Running` records.
+- No provider secret is returned through the API or stored in discovery-run history.
+
+## Build 83 — OpenAI Web Discovery Provider
+
+Atlas can now execute Opportunity Radar discovery jobs directly through the OpenAI Responses API with built-in web search. The generic Build 82 HTTP adapter remains supported, and external handoff mode remains the zero-configuration fallback.
+
+- Adds provider selection with `ATLAS_DISCOVERY_PROVIDER=auto|http_json|openai`.
+- Adds direct OpenAI Responses API execution when an API key and model are configured.
+- Uses web search during opportunity discovery and requires the model to return Atlas's normalized candidate contract.
+- Captures provider response metadata and discovered web-source URLs without persisting the API key.
+- Keeps candidate caps, Radar normalization, duplicate detection, evidence scoring, and run persistence unchanged.
+- The Radar UI now identifies the active discovery provider and configured OpenAI model.
+- See `BUILD_83.md`.
+
+
+
+## Build 84 — Autonomous Discovery Scheduler
+
+Atlas can now execute due Opportunity Radar discovery work automatically through the configured live provider. Autonomous discovery is opt-in, rate-limited to at least hourly checks, defaults to one job per cycle, and applies a source/query cooldown to prevent repeated failed or duplicate-only searches. See `BUILD_84.md` for configuration and API details.
+
+
+## Build 85 — Autonomous Radar Triage
+
+Atlas now evaluates Radar candidates immediately after discovery and assigns a safe decision class: **promote**, **research**, or **suppress**. Suppression is non-destructive, and promotion remains a deliberate user action. Build 85 adds persisted triage metadata plus `/api/radar/autotriage` and `/api/radar/autotriage/run`.
+
+
+## Build 86 — Radar Promotion Approval Gate
+
+Atlas now converts Build 85 promote recommendations into a controlled approval queue. Ready candidates require an explicit approve decision before entering Researching; defer and reject decisions remain non-destructive and every decision is retained in candidate-level promotion history. The Radar API now exposes `promotion_queue`, plus `GET /api/radar/promotion-queue` and `POST /api/radar/:id/promotion-review`.
+
+
+## Build 87 — Radar Research Action Queue
+
+Atlas turns RESEARCH triage into a prioritized validation workflow. Each research candidate receives one concrete evidence-gap task with Pending, Deferred, and Completed states. Completing research records the work but does not fabricate evidence or promote the candidate.
+
+
+## Build 88 — Radar Evidence Capture + Immediate Reassessment
+
+Atlas can now record real validation evidence directly on a Radar candidate. Evidence includes type, quality, and source; Atlas immediately recalculates evidence strength, Radar Score, duplicate context, triage, and the next research gap. Evidence additions are audited and never bypass the Build 86 explicit promotion gate. See `BUILD_88.md`.
+
+
+## Build 89 — Targeted Radar Research Assist
+
+Atlas now converts pending Radar evidence gaps into provider-ready research briefs. Research Assist is opt-in, routes each gap to an appropriate research adapter, and never writes provider findings directly as evidence. Concrete findings still pass through Build 88 evidence capture and Build 86 promotion approval. See `BUILD_89.md`.
+
+
+## Build 90 — Executable Research Assist + Finding Review Gate
+
+When Research Assist and the OpenAI web-search provider are explicitly enabled, Atlas can now execute targeted validation research. Results are staged as source-backed findings requiring Accept/Reject review. Only accepted findings pass through Build 88 evidence capture; Build 86 explicit promotion approval remains authoritative. See `BUILD_90.md`.
+
+## Atlas Travel
+
+Travel Build 1 is included in v1.60.0. It adds persistent trip planning, Travel preferences, the Dreaming → Completed lifecycle, and an explainable destination decision engine. See `TRAVEL_BUILD_1.md`.
+
+## Atlas Travel modules
+- Travel Build 1: Travel Core & Decision Engine (`TRAVEL_BUILD_1.md`)
+- Travel Build 2: Destination Research Workspace (`TRAVEL_BUILD_2.md`)
+
+- Travel Build 3: Automated Destination Research (`TRAVEL_BUILD_3.md`)
+
+
+## Travel Build 4 — Live Research Architecture
+Travel now has provider readiness for flights, lodging, weather, and availability; source/freshness-aware live research snapshots; and safe separation between Atlas seed estimates and externally verified current research. See `TRAVEL_BUILD_4.md`.
+
+
+## Travel Builds 5–8
+- Travel Build 5: Flight Research Engine (`TRAVEL_BUILD_5.md`)
+- Travel Build 6: Hotel / Resort Research Engine (`TRAVEL_BUILD_6.md`)
+- Travel Build 7: Trip Package Optimizer (`TRAVEL_BUILD_7.md`)
+- Travel Build 8: Trip Shortlist & Booking Decision (`TRAVEL_BUILD_8.md`)
+- Travel Build 9: Booked Trip Operations (`TRAVEL_BUILD_9.md`)
+- Travel Build 10: Live Trip Command Center (`TRAVEL_BUILD_10.md`)
+- Travel Build 11: Post-Trip Review & Learning Engine (`TRAVEL_BUILD_11.md`)
+- Travel Build 12: Travel Intelligence Dashboard (`TRAVEL_BUILD_12.md`)
+- Travel Build 13: Trip Scenario Planner (`TRAVEL_BUILD_13.md`)
+- Travel Build 14: Travel Watchlist & Recheck Engine (`TRAVEL_BUILD_14.md`)

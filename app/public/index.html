@@ -29,6 +29,16 @@
           <div id="intelligenceQueue" class="intelligence-queue"></div>
         </div>
       </section>
+      <section id="next-work-block" class="work-block-panel">
+        <div class="panel-title"><h3>Next Work Block</h3><span>Best executable use of the time you have</span></div>
+        <div class="work-block-controls"><label>Available time <select id="workBlockMinutes"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option><option value="120">2 hours</option></select></label><button type="button" id="planWorkBlock">Plan this block</button></div>
+        <div id="nextWorkBlock" class="work-block-content"></div>
+      </section>
+      <section id="daily-work-plan" class="work-block-panel daily-work-plan-panel">
+        <div class="panel-title"><h3>Daily Work Plan</h3><span>Sequence the best work into the time you have today</span></div>
+        <div class="work-block-controls"><label>Today’s work time <select id="dailyPlanMinutes"><option value="60">1 hour</option><option value="90" selected>90 min</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></label><button type="button" id="planDailyWork">Build today’s plan</button></div>
+        <div id="dailyWorkPlan" class="work-block-content"></div>
+      </section>
       <section id="focus-review" class="focus-review-panel">
         <div class="panel-title"><h3>Today’s Focus Review</h3><span>Execution, not just recommendations</span></div>
         <div id="focusReview" class="focus-review-content"></div>
@@ -60,6 +70,476 @@
         </div>
       </div>
     </section>
+    <section id="atlas-next-moves-card" class="card">
+      <div class="section-heading"><div><p class="eyebrow">ATLAS PRIORITY QUEUE</p><h2>Next Money Moves</h2></div><span id="next-moves-headline">Loading…</span></div>
+      <div id="next-moves-list" class="next-moves-list"></div>
+    </section>
+
+    <section id="travel-card" class="card travel-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">ATLAS TRAVEL</p><h2>Trip Command Center</h2></div>
+        <span id="travel-summary">Loading travel…</span>
+      </div>
+      <p class="travel-intro">Plan trips from idea to completed travel. Atlas compares destination options against budget, travel burden, weather, lodging fit, experience fit, simplicity, and your saved preferences.</p>
+      <div id="travel-statuses" class="travel-statuses"></div>
+      <div class="travel-grid">
+        <form id="travel-trip-form" class="travel-panel">
+          <h3>Start a trip</h3>
+          <input id="travel-name" placeholder="Trip name" required>
+          <select id="travel-status"><option>Dreaming</option><option>Researching</option><option>Planning</option><option>Booked</option><option>Traveling</option><option>Completed</option></select>
+          <input id="travel-budget" type="number" min="0" step="1" placeholder="Target total budget">
+          <input id="travel-start" type="date">
+          <input id="travel-end" type="date">
+          <button type="submit">Create trip</button>
+        </form>
+        <form id="travel-preferences-form" class="travel-panel">
+          <h3>Travel preferences</h3>
+          <label>Home airport<input id="travel-home-airport" maxlength="4" placeholder="MSP"></label>
+          <label>Preferred max flight hours<input id="travel-max-flight" type="number" min="1" step="0.5"></label>
+          <label>Preferred max layovers<input id="travel-max-layovers" type="number" min="0" step="1"></label>
+          <div class="travel-checkboxes">
+            <label><input id="travel-pref-all-inclusive" type="checkbox"> All-inclusive</label>
+            <label><input id="travel-pref-adults-only" type="checkbox"> Adults-only</label>
+            <label><input id="travel-pref-beach" type="checkbox"> Beach</label>
+            <label><input id="travel-pref-relaxation" type="checkbox"> Relaxation</label>
+          </div>
+          <button type="submit" class="secondary">Save preferences</button>
+        </form>
+      </div>
+      <section class="travel-research-workspace">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">TRAVEL BUILD 4</p><h3>Destination Research Workspace</h3></div>
+          <span id="travel-research-status">Choose a trip</span>
+        </div>
+        <div class="travel-auto-research">
+          <div><strong>Automated destination research</strong><span>Generate ranked planning candidates from this trip’s budget, dates, travelers, origin, and saved preferences. Seed estimates are clearly labeled and are not live quotes.</span></div>
+          <label>Ideas<select id="travel-auto-count"><option>4</option><option selected>6</option><option>8</option><option>10</option></select></label>
+          <button id="travel-auto-research" type="button">Generate candidates</button>
+          <span id="travel-auto-status">Ready</span>
+        </div>
+        <div class="travel-live-research">
+          <div class="travel-live-head"><div><strong>Live research connections</strong><span>Flights, lodging, weather, and availability stay separate from Atlas seed estimates. Provider data carries source and freshness metadata.</span></div><span id="travel-live-provider-summary">Checking connections…</span></div>
+          <div id="travel-provider-status" class="travel-provider-status"></div>
+          <form id="travel-live-snapshot-form" class="travel-live-form">
+            <label>Destination<select id="travel-live-destination"></select></label>
+            <label>Provider / source<input id="travel-live-provider" placeholder="Provider name" required></label>
+            <label>Total quote<input id="travel-live-total" type="number" min="0" step="1" placeholder="4650"></label>
+            <label>Flight hours<input id="travel-live-flight-hours" type="number" min="0" step="0.1" placeholder="4.5"></label>
+            <label>Weather 0–10<input id="travel-live-weather" type="number" min="0" max="10" step="0.5" placeholder="9"></label>
+            <label>Availability<input id="travel-live-availability" placeholder="Available / limited / sold out"></label>
+            <button type="submit" class="secondary">Apply verified snapshot</button>
+            <span id="travel-live-status">Use only provider-verified/current data.</span>
+          </form>
+        </div>
+        <div class="travel-research-grid">
+          <form id="travel-destination-form" class="travel-panel">
+            <h3>Add destination candidate</h3>
+            <label>Trip<select id="travel-research-trip" required></select></label>
+            <label>Destination<input id="travel-destination-name" placeholder="Montego Bay, Jamaica" required></label>
+            <div class="travel-two-col"><label>Estimated total cost<input id="travel-destination-cost" type="number" min="0" step="1" placeholder="4500"></label><label>Flight hours<input id="travel-destination-flight" type="number" min="0" step="0.1" placeholder="4.5"></label></div>
+            <div class="travel-two-col"><label>Layovers<input id="travel-destination-layovers" type="number" min="0" step="1" value="0"></label><label>Weather 0–10<input id="travel-destination-weather" type="number" min="0" max="10" step="0.5" value="7"></label></div>
+            <div class="travel-two-col"><label>Lodging fit 0–10<input id="travel-destination-lodging" type="number" min="0" max="10" step="0.5" value="7"></label><label>Experience fit 0–10<input id="travel-destination-experience" type="number" min="0" max="10" step="0.5" value="7"></label></div>
+            <label>Simplicity 0–10<input id="travel-destination-simplicity" type="number" min="0" max="10" step="0.5" value="7"></label>
+            <div class="travel-checkboxes">
+              <label><input id="travel-dest-all-inclusive" type="checkbox"> All-inclusive</label><label><input id="travel-dest-adults-only" type="checkbox"> Adults-only</label><label><input id="travel-dest-beach" type="checkbox"> Beach</label><label><input id="travel-dest-relaxation" type="checkbox"> Relaxation</label><label><input id="travel-dest-nightlife" type="checkbox"> Nightlife</label><label><input id="travel-dest-nature" type="checkbox"> Nature</label>
+            </div>
+            <label>Research notes<textarea id="travel-destination-notes" rows="3" placeholder="What stands out, concerns, resort area, etc."></textarea></label>
+            <button type="submit">Score & add destination</button>
+          </form>
+          <div class="travel-panel travel-comparison-panel">
+            <h3>Atlas comparison</h3>
+            <div id="travel-research-brief" class="travel-research-brief"><span>Add candidates to compare.</span></div>
+            <div id="travel-comparison-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+      <section class="travel-flight-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 5</p><h3>Flight Research Engine</h3></div><span id="travel-flight-summary">Choose a trip</span></div>
+        <div class="travel-flight-grid">
+          <form id="travel-flight-form" class="travel-panel">
+            <h3>Add flight option</h3>
+            <label>Destination<select id="travel-flight-destination"></select></label>
+            <div class="travel-two-col"><label>Destination airport<input id="travel-flight-airport" maxlength="4" placeholder="MBJ" required></label><label>Airline<input id="travel-flight-airline" placeholder="Delta"></label></div>
+            <div class="travel-two-col"><label>Total trip price<input id="travel-flight-price" type="number" min="0" step="1" placeholder="980" required></label><label>Total travel hours<input id="travel-flight-hours" type="number" min="0" step="0.1" placeholder="5.2" required></label></div>
+            <div class="travel-two-col"><label>Layovers<input id="travel-flight-layovers" type="number" min="0" step="1" value="0"></label><label>Cabin<input id="travel-flight-cabin" value="Economy"></label></div>
+            <div class="travel-two-col"><label>Baggage fees<input id="travel-flight-bag-fees" type="number" min="0" step="1" value="0"></label><label>Seat fees<input id="travel-flight-seat-fees" type="number" min="0" step="1" value="0"></label></div>
+            <div class="travel-checkboxes"><label><input id="travel-flight-bags-included" type="checkbox"> Bags included</label><label><input id="travel-flight-changeable" type="checkbox"> Changeable</label><label><input id="travel-flight-refundable" type="checkbox"> Refundable</label><label><input id="travel-flight-live" type="checkbox"> Provider-verified live quote</label></div>
+            <label>Provider / source<input id="travel-flight-source" placeholder="Google Flights, airline, API"></label>
+            <button type="submit">Score & add flight</button>
+          </form>
+          <div class="travel-panel"><h3>Flight comparison</h3><div id="travel-flight-board" class="travel-comparison-board"></div></div>
+        </div>
+      </section>
+
+      <section class="travel-resort-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 6</p><h3>Hotel / Resort Research Engine</h3></div><span id="travel-resort-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <form id="travel-resort-form" class="travel-panel">
+            <h3>Add hotel / resort option</h3>
+            <label>Destination<select id="travel-resort-destination"></select></label>
+            <div class="travel-two-col"><label>Property name<input id="travel-resort-name" placeholder="Couples Negril" required></label><label>Room category<input id="travel-resort-room" placeholder="Ocean Deluxe"></label></div>
+            <div class="travel-two-col"><label>Total stay cost<input id="travel-resort-total" type="number" min="0" step="1" placeholder="3200" required></label><label>Nights<input id="travel-resort-nights" type="number" min="1" step="1" value="6"></label></div>
+            <div class="travel-two-col"><label>Taxes / fees<input id="travel-resort-taxes" type="number" min="0" step="1" value="0"></label><label>Resort fees<input id="travel-resort-fees" type="number" min="0" step="1" value="0"></label></div>
+            <div class="travel-checkboxes"><label><input id="travel-resort-ai" type="checkbox"> All-inclusive</label><label><input id="travel-resort-adults" type="checkbox"> Adults-only</label><label><input id="travel-resort-relax" type="checkbox"> Relaxation-focused</label><label><input id="travel-resort-live" type="checkbox"> Provider-verified live quote</label></div>
+            <div class="travel-two-col"><label>Beach 0–10<input id="travel-resort-beach" type="number" min="0" max="10" step="0.5" value="7"></label><label>Pools 0–10<input id="travel-resort-pools" type="number" min="0" max="10" step="0.5" value="7"></label></div>
+            <div class="travel-two-col"><label>Food 0–10<input id="travel-resort-food" type="number" min="0" max="10" step="0.5" value="7"></label><label>Bars 0–10<input id="travel-resort-bars" type="number" min="0" max="10" step="0.5" value="7"></label></div>
+            <div class="travel-two-col"><label>Room 0–10<input id="travel-resort-room-score" type="number" min="0" max="10" step="0.5" value="7"></label><label>Location 0–10<input id="travel-resort-location" type="number" min="0" max="10" step="0.5" value="7"></label></div>
+            <div class="travel-two-col"><label>Review score / 5<input id="travel-resort-review" type="number" min="0" max="5" step="0.1" value="4.3"></label><label>Review count<input id="travel-resort-review-count" type="number" min="0" step="1" value="500"></label></div>
+            <div class="travel-two-col"><label>Restaurants<input id="travel-resort-restaurants" type="number" min="0" step="1" value="0"></label><label>Bars / lounges<input id="travel-resort-bar-count" type="number" min="0" step="1" value="0"></label></div>
+            <label>Provider / source<input id="travel-resort-source" placeholder="Resort site, Booking, Expedia, API"></label>
+            <button type="submit">Score & add resort</button>
+          </form>
+          <div class="travel-panel"><h3>Resort comparison</h3><div id="travel-resort-board" class="travel-comparison-board"></div></div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 7</p><h3>Trip Package Optimizer</h3></div><span id="travel-package-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Package assumptions</h3>
+            <p class="travel-intro">Atlas combines every compatible destination + flight + resort pair and ranks the complete trip, not just the cheapest pieces.</p>
+            <div class="travel-two-col"><label>Airport transfers<input id="travel-package-transfer" type="number" min="0" step="1" value="0"></label><label>Activity allowance<input id="travel-package-activities" type="number" min="0" step="1" value="0"></label></div>
+            <label>Other trip costs<input id="travel-package-other" type="number" min="0" step="1" value="0"></label>
+            <button id="travel-package-refresh" type="button">Optimize packages</button>
+          </div>
+          <div class="travel-panel"><h3>Best complete packages</h3><div id="travel-package-board" class="travel-comparison-board"></div></div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 8</p><h3>Trip Shortlist & Booking Decision</h3></div><span id="travel-decision-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel"><h3>Final shortlist</h3><p class="travel-intro">Favorite complete packages in the optimizer above, then lock the one you want Atlas to carry forward.</p><div id="travel-shortlist-board" class="travel-comparison-board"></div></div>
+          <div class="travel-panel"><h3>Booking verification</h3><p class="travel-intro">Atlas will not mark the trip Booked until the preferred package is locked and every required check is complete.</p><div id="travel-verification-board" class="travel-comparison-board"></div><button id="travel-book-package" type="button">Mark preferred package booked</button></div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 9</p><h3>Booked Trip Operations</h3></div><span id="travel-operations-summary">Choose a booked trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Confirmations & payments</h3>
+            <p class="travel-intro">Store the operational details Atlas needs after booking so the trip is ready to execute.</p>
+            <form id="travel-confirmation-form" class="travel-form">
+              <div class="travel-two-col"><label>Type<select id="travel-confirmation-type"><option value="flight">Flight</option><option value="lodging">Lodging</option><option value="transfer">Transfer</option><option value="activity">Activity</option><option value="restaurant">Restaurant</option><option value="reservation">Other reservation</option></select></label><label>Name<input id="travel-confirmation-name" required placeholder="Delta flight / resort / tour"></label></div>
+              <div class="travel-two-col"><label>Confirmation #<input id="travel-confirmation-number" placeholder="ABC123"></label><label>Provider<input id="travel-confirmation-provider" placeholder="Delta, Hyatt, Viator"></label></div>
+              <div class="travel-two-col"><label>Date<input id="travel-confirmation-date" type="date"></label><label>Location<input id="travel-confirmation-location" placeholder="MSP → MBJ / Montego Bay"></label></div>
+              <button type="submit">Add confirmation</button>
+            </form>
+            <div id="travel-confirmation-board" class="travel-comparison-board"></div>
+            <form id="travel-payment-form" class="travel-form">
+              <div class="travel-two-col"><label>Payment<input id="travel-payment-label" required placeholder="Resort balance"></label><label>Amount<input id="travel-payment-amount" type="number" min="0" step="0.01" required></label></div>
+              <div class="travel-two-col"><label>Due date<input id="travel-payment-due" type="date"></label><label>Status<select id="travel-payment-status"><option value="planned">Planned</option><option value="scheduled">Scheduled</option><option value="paid">Paid</option></select></label></div>
+              <button type="submit">Add payment</button>
+            </form>
+            <div id="travel-payment-board" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Pre-trip readiness</h3>
+            <p class="travel-intro">Complete every required gate before Atlas moves the trip from Booked to Traveling.</p>
+            <div id="travel-readiness-board" class="travel-comparison-board"></div>
+            <label>Itinerary / execution notes<textarea id="travel-itinerary-notes" placeholder="Arrival plan, transfer instructions, reservation timing, must-do items"></textarea></label>
+            <button id="travel-save-itinerary" type="button">Save itinerary notes</button>
+            <button id="travel-start-trip" type="button">Start trip · move to Traveling</button>
+          </div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 18</p><h3>Pre-Departure Command Center</h3></div><span id="travel-predeparture-summary">Choose a booked trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Departure readiness</h3>
+            <p class="travel-intro">Atlas combines operational readiness, confirmations, payments, and last-mile departure tasks into one clearance score.</p>
+            <div id="travel-predeparture-score" class="travel-comparison-board"></div>
+            <div id="travel-predeparture-checklist" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Last-mile notes</h3>
+            <label>Documents / IDs<textarea id="travel-predeparture-documents" placeholder="Passport location, visa notes, copies, traveler document reminders"></textarea></label>
+            <label>Packing<textarea id="travel-predeparture-packing" placeholder="Last items to pack, baggage limits, chargers, essentials"></textarea></label>
+            <label>Departure plan<textarea id="travel-predeparture-notes" placeholder="Airport timing, parking/ride, check-in timing, first arrival steps"></textarea></label>
+            <button id="travel-predeparture-save" type="button">Save departure notes</button>
+            <div id="travel-predeparture-blockers" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 19</p><h3>Live Trip Resilience Center</h3></div><span id="travel-resilience-summary">Choose a traveling trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Disruptions & recovery</h3>
+            <p class="travel-intro">Capture what changed, preserve the original plan, and let Atlas surface the most urgent recovery step without claiming live knowledge it does not have.</p>
+            <form id="travel-resilience-form" class="travel-form">
+              <div class="travel-two-col"><label>Problem<input id="travel-resilience-title" required placeholder="Flight cancelled / room unavailable"></label><label>Type<select id="travel-resilience-type"><option value="flight">Flight</option><option value="lodging">Lodging</option><option value="transfer">Transfer</option><option value="reservation">Reservation</option><option value="health">Health / safety</option><option value="other">Other</option></select></label></div>
+              <div class="travel-two-col"><label>Severity<select id="travel-resilience-severity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label><label>Provider / source<input id="travel-resilience-provider" placeholder="Airline, hotel, restaurant"></label></div>
+              <label>Current situation<textarea id="travel-resilience-situation" placeholder="What changed? Keep the original itinerary intact."></textarea></label>
+              <label>Recovery plan<textarea id="travel-resilience-plan" placeholder="Replacement flight, new room, call provider, protect next reservation…"></textarea></label>
+              <button type="submit">Log disruption</button>
+            </form>
+            <div id="travel-resilience-next" class="travel-comparison-board"></div>
+            <div id="travel-resilience-board" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Emergency contacts & recovery notes</h3>
+            <form id="travel-resilience-contact-form" class="travel-form">
+              <div class="travel-two-col"><label>Label<input id="travel-resilience-contact-label" required placeholder="Travel insurance / resort / emergency"></label><label>Name<input id="travel-resilience-contact-name" placeholder="Provider or person"></label></div>
+              <div class="travel-two-col"><label>Phone<input id="travel-resilience-contact-phone" placeholder="Phone"></label><label>Email<input id="travel-resilience-contact-email" type="email" placeholder="Email"></label></div>
+              <button type="submit">Add contact</button>
+            </form>
+            <div id="travel-resilience-contacts" class="travel-comparison-board"></div>
+            <label>Recovery notes<textarea id="travel-resilience-notes" placeholder="Claims, credits, replacement details, follow-up needed"></textarea></label>
+            <button id="travel-resilience-save-notes" type="button">Save recovery notes</button>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 20</p><h3>Trip Completion & Recovery Wrap-Up Center</h3></div><span id="travel-wrap-up-summary">Choose a traveling trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Closure readiness</h3>
+            <p class="travel-intro">Close the operational loose ends before Atlas marks the trip complete. Resolved disruptions remain in history; refunds, credits, claims, and reimbursements can be resolved or safely deferred with a follow-up date.</p>
+            <div id="travel-wrap-up-score" class="travel-comparison-board"></div>
+            <div id="travel-wrap-up-checklist" class="travel-comparison-board"></div>
+            <div id="travel-wrap-up-blockers" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Refunds, credits & follow-up</h3>
+            <form id="travel-wrap-up-money-form" class="travel-form">
+              <div class="travel-two-col"><label>Item<input id="travel-wrap-up-money-label" required placeholder="Airline credit / hotel refund / insurance claim"></label><label>Type<select id="travel-wrap-up-money-type"><option value="refund">Refund</option><option value="credit">Credit</option><option value="claim">Claim</option><option value="reimbursement">Reimbursement</option><option value="other">Other</option></select></label></div>
+              <div class="travel-two-col"><label>Amount<input id="travel-wrap-up-money-amount" type="number" min="0" step="0.01"></label><label>Status<select id="travel-wrap-up-money-status"><option value="open">Open</option><option value="pending">Pending</option><option value="resolved">Resolved</option><option value="deferred">Deferred</option></select></label></div>
+              <div class="travel-two-col"><label>Provider<input id="travel-wrap-up-money-provider" placeholder="Airline / hotel / insurer"></label><label>Follow-up date<input id="travel-wrap-up-money-followup" type="date"></label></div>
+              <label>Reference / notes<input id="travel-wrap-up-money-reference" placeholder="Claim number, credit code, refund reference"></label>
+              <button type="submit">Add follow-up item</button>
+            </form>
+            <div id="travel-wrap-up-board" class="travel-comparison-board"></div>
+            <label>Closure notes<textarea id="travel-wrap-up-notes" placeholder="Anything Atlas should retain after the trip closes"></textarea></label>
+            <button id="travel-wrap-up-save-notes" type="button">Save closure notes</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 10</p><h3>Live Trip Command Center</h3></div><span id="travel-live-summary">Choose a traveling trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Today & What’s Next?</h3>
+            <p class="travel-intro">See the active day, upcoming reservation, confirmation access, and changes without digging through the planning screens.</p>
+            <form id="travel-live-itinerary-form" class="travel-form">
+              <div class="travel-two-col"><label>Item<input id="travel-live-title" required placeholder="Airport transfer / dinner / tour"></label><label>Type<select id="travel-live-type"><option value="flight">Flight</option><option value="transfer">Transfer</option><option value="lodging">Lodging</option><option value="activity">Activity</option><option value="restaurant">Restaurant</option><option value="other">Other</option></select></label></div>
+              <div class="travel-two-col"><label>Date<input id="travel-live-date" type="date" required></label><label>Time<input id="travel-live-time" type="time"></label></div>
+              <label>Location<input id="travel-live-location" placeholder="Lobby / airport / restaurant"></label>
+              <button type="submit">Add itinerary item</button>
+            </form>
+            <div id="travel-live-next" class="travel-comparison-board"></div>
+            <div id="travel-live-today" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Spending & Issues</h3>
+            <form id="travel-live-expense-form" class="travel-form">
+              <div class="travel-two-col"><label>Expense<input id="travel-live-expense-label" required placeholder="Taxi / lunch / excursion"></label><label>Amount<input id="travel-live-expense-amount" type="number" min="0" step="0.01" required></label></div>
+              <div class="travel-two-col"><label>Category<select id="travel-live-expense-category"><option value="food">Food & drink</option><option value="transport">Transport</option><option value="activity">Activity</option><option value="shopping">Shopping</option><option value="tips">Tips</option><option value="other">Other</option></select></label><label>Date<input id="travel-live-expense-date" type="date"></label></div>
+              <button type="submit">Log expense</button>
+            </form>
+            <div id="travel-live-expenses" class="travel-comparison-board"></div>
+            <form id="travel-live-issue-form" class="travel-form">
+              <div class="travel-two-col"><label>Issue<input id="travel-live-issue-title" required placeholder="Delayed transfer / room problem"></label><label>Severity<select id="travel-live-issue-severity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label></div>
+              <button type="submit">Log issue</button>
+            </form>
+            <div id="travel-live-issues" class="travel-comparison-board"></div>
+            <label>Daily notes<textarea id="travel-live-notes" placeholder="Anything Atlas should remember about today"></textarea></label>
+            <button id="travel-live-save-notes" type="button">Save daily notes</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 11</p><h3>Post-Trip Review & Learning Engine</h3></div><span id="travel-review-summary">Complete the trip to teach Atlas</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Trip scorecard</h3>
+            <p class="travel-intro">Rate what actually happened. Atlas keeps the review separate from future preferences until you explicitly apply a learning suggestion.</p>
+            <form id="travel-review-form" class="travel-form">
+              <div class="travel-two-col"><label>Overall 1–10<input id="travel-review-overall" type="number" min="1" max="10" step="1" required></label><label>Actual total spend<input id="travel-review-spend" type="number" min="0" step="0.01"></label></div>
+              <div class="travel-two-col"><label>Destination 1–10<input id="travel-review-destination" type="number" min="0" max="10" step="1"></label><label>Flight 1–10<input id="travel-review-flight" type="number" min="0" max="10" step="1"></label></div>
+              <div class="travel-two-col"><label>Resort 1–10<input id="travel-review-resort" type="number" min="0" max="10" step="1"></label><label>Value 1–10<input id="travel-review-value" type="number" min="0" max="10" step="1"></label></div>
+              <label>Loved <input id="travel-review-loved" placeholder="Beach; staff; food"></label>
+              <label>Disliked <input id="travel-review-disliked" placeholder="Long transfer; noisy room"></label>
+              <label>Worth the money <input id="travel-review-worth" placeholder="Private transfer; excursion"></label>
+              <label>Never repeat <input id="travel-review-avoid" placeholder="Red-eye flight; specific area"></label>
+              <div class="travel-two-col"><label>Repeat this trip?<select id="travel-review-repeat"><option value="">Not set</option><option value="yes">Yes</option><option value="no">No</option></select></label><label>Return to destination?<select id="travel-review-return"><option value="">Not set</option><option value="yes">Yes</option><option value="no">No</option></select></label></div>
+              <label>Final notes<textarea id="travel-review-notes" placeholder="What Atlas should remember for the next trip"></textarea></label>
+              <button type="submit">Save trip review</button>
+            </form>
+            <button id="travel-complete-trip" type="button">Complete trip</button>
+          </div>
+          <div class="travel-panel">
+            <h3>Atlas learning suggestions</h3>
+            <div id="travel-review-spend-summary" class="travel-comparison-board"></div>
+            <div id="travel-learning-board" class="travel-comparison-board"></div>
+            <button id="travel-apply-learning" type="button">Apply selected learning</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 12</p><h3>Travel Intelligence Dashboard</h3></div><span id="travel-intelligence-summary">Building travel history…</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Your travel pattern</h3>
+            <p class="travel-intro">Atlas turns completed trips into decision support: spend accuracy, trip ratings, repeat behavior, and the themes you consistently love or avoid.</p>
+            <div id="travel-intelligence-metrics" class="travel-comparison-board"></div>
+            <div id="travel-intelligence-signals" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Where should we go next?</h3>
+            <p class="travel-intro">Ranked from saved preferences plus completed-trip history. These are intelligence recommendations, not live bookable quotes.</p>
+            <div class="travel-two-col"><label>Next-trip budget<input id="travel-intelligence-budget" type="number" min="0" step="100" placeholder="Use historical average"></label><label>Travelers<input id="travel-intelligence-travelers" type="number" min="1" step="1" placeholder="Use saved default"></label></div>
+            <button id="travel-intelligence-refresh" type="button">Refresh recommendations</button>
+            <div id="travel-intelligence-recommendations" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 13</p><h3>Trip Scenario Planner</h3></div><span id="travel-scenario-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Create a what-if scenario</h3>
+            <p class="travel-intro">Compare alternate destinations, budgets, dates, flight burden, and lodging quality before changing the actual trip plan.</p>
+            <form id="travel-scenario-form" class="travel-form">
+              <label>Scenario name<input id="travel-scenario-name" required placeholder="7 nights Jamaica — nonstop"></label>
+              <div class="travel-two-col"><label>Destination<input id="travel-scenario-destination" required placeholder="Montego Bay, Jamaica"></label><label>Budget target<input id="travel-scenario-budget" type="number" min="0" step="50"></label></div>
+              <div class="travel-two-col"><label>Flight total<input id="travel-scenario-flight-cost" type="number" min="0" step="25"></label><label>Lodging total<input id="travel-scenario-lodging-cost" type="number" min="0" step="25"></label></div>
+              <div class="travel-two-col"><label>Taxes / fees<input id="travel-scenario-fees" type="number" min="0" step="25"></label><label>Activities + other<input id="travel-scenario-other" type="number" min="0" step="25"></label></div>
+              <div class="travel-two-col"><label>Flight hours<input id="travel-scenario-flight-hours" type="number" min="0" step="0.1"></label><label>Layovers<input id="travel-scenario-layovers" type="number" min="0" step="1" value="0"></label></div>
+              <div class="travel-two-col"><label>Lodging quality (0–10)<input id="travel-scenario-lodging-score" type="number" min="0" max="10" step="0.5" value="8"></label><label>Nights<input id="travel-scenario-nights" type="number" min="1" step="1" value="7"></label></div>
+              <label>Notes<textarea id="travel-scenario-notes" placeholder="What changes in this version?"></textarea></label>
+              <button type="submit">Add scenario</button>
+            </form>
+          </div>
+          <div class="travel-panel">
+            <h3>Scenario comparison</h3>
+            <div id="travel-scenario-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 14</p><h3>Travel Watchlist & Recheck Engine</h3></div><span id="travel-watch-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Watch a scenario</h3>
+            <p class="travel-intro">Set the total trip price that would make you act. Atlas preserves every recheck so you can see movement instead of replacing yesterday's number.</p>
+            <form id="travel-watch-form" class="travel-form">
+              <label>Scenario<select id="travel-watch-scenario" required></select></label>
+              <div class="travel-two-col"><label>Target total<input id="travel-watch-target" type="number" min="1" step="25" required placeholder="4500"></label><label>Watch label<input id="travel-watch-label" placeholder="Jamaica under $4,500"></label></div>
+              <label>Notes<textarea id="travel-watch-notes" placeholder="What would make this worth booking?"></textarea></label>
+              <button type="submit">Add to watchlist</button>
+            </form>
+          </div>
+          <div class="travel-panel">
+            <h3>Price & freshness watch</h3>
+            <p class="travel-intro">Recheck due means the saved observation is more than 24 hours old, expired, or has never been checked. It does not imply Atlas fetched a live quote.</p>
+            <div id="travel-watch-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 15</p><h3>Travel Alerts & Action Queue</h3></div><span id="travel-action-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>What deserves attention now?</h3>
+            <p class="travel-intro">Atlas turns watchlist evidence into a prioritized action queue. Target hits rise first, then verification needs, meaningful drops, stale quotes, and worsening prices.</p>
+            <div id="travel-action-next" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Action queue</h3>
+            <p class="travel-intro">Acknowledge an item when you have handled it, or snooze it for 24 hours. Actions remain evidence-based and do not imply Atlas checked a live provider unless the saved quote says so.</p>
+            <div id="travel-action-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 16</p><h3>Decision & Booking Readiness Center</h3></div><span id="travel-readiness-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Best action right now</h3>
+            <p class="travel-intro">Atlas combines target price, quote freshness, live verification, budget fit, and scenario quality into an explicit recommendation: Book, Verify, Recheck, Consider, or Wait.</p>
+            <div id="travel-readiness-next" class="travel-comparison-board"></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Booking readiness</h3>
+            <p class="travel-intro">“Book now” is only available when the saved target is hit on a fresh quote explicitly marked as live-backed. Final terms and availability still require review.</p>
+            <div id="travel-booking-readiness-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="travel-package-workspace">
+        <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 17</p><h3>Booking Execution & Confirmation Center</h3></div><span id="travel-booking-execution-summary">Choose a trip</span></div>
+        <div class="travel-resort-grid">
+          <div class="travel-panel">
+            <h3>Controlled booking workflow</h3>
+            <p class="travel-intro">Start from a BOOK or VERIFY recommendation, recheck the exact live quote, complete the final booking gates, then record the purchase confirmation. Atlas will not mark the trip Booked until every gate is complete.</p>
+            <div id="travel-booking-execution-next" class="travel-comparison-board"></div>
+            <div class="travel-compare-actions"><button id="travel-booking-start" type="button">Start top booking workflow</button><button id="travel-booking-finalize" type="button">Finalize booking</button></div>
+          </div>
+          <div class="travel-panel">
+            <h3>Final checks & confirmation</h3>
+            <div id="travel-booking-execution-board" class="travel-comparison-board"></div>
+          </div>
+        </div>
+      </section>
+      <div id="travel-trip-list" class="travel-trip-list"></div>
+    </section>
+
+    <section id="opportunity-radar-card" class="card radar-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">OPPORTUNITY RADAR</p><h2>Candidate Pipeline</h2></div>
+        <span id="radar-summary">Loading candidates…</span>
+      </div>
+      <p class="radar-intro">Capture money-making ideas before they enter the active portfolio. Atlas scores fit, economics, speed, automation, and evidence, then promotes only the candidates worth researching.</p>
+      <div id="radar-discovery-controller" class="radar-discovery-controller"></div>
+      <div id="radar-source-performance" class="radar-source-performance"></div>
+      <form id="radar-form" class="radar-form">
+        <input id="radar-name" placeholder="Candidate name" required>
+        <input id="radar-category" placeholder="Category" required>
+        <textarea id="radar-description" placeholder="What is the opportunity?" required></textarea>
+        <input id="radar-source" placeholder="Source or discovery channel">
+        <input id="radar-evidence" placeholder="Evidence (separate items with semicolons)">
+        <div class="radar-evidence-controls">
+          <label>Evidence type
+            <select id="radar-evidence-type">
+              <option value="signal">General signal</option>
+              <option value="search_activity">Search activity</option>
+              <option value="marketplace_activity">Marketplace activity</option>
+              <option value="competitor_sales">Competitor sales</option>
+              <option value="direct_customer_request">Direct customer request</option>
+              <option value="survey_interest">Survey/interview interest</option>
+              <option value="comparable_product">Comparable product</option>
+              <option value="assumption">Assumption</option>
+            </select>
+          </label>
+          <label>Evidence quality
+            <select id="radar-evidence-quality"><option>Low</option><option selected>Medium</option><option>High</option></select>
+          </label>
+        </div>
+        <div class="radar-score-grid">
+          <label>Income potential <input id="radar-income" type="number" min="0" max="10" value="5"></label>
+          <label>Speed to revenue <input id="radar-speed" type="number" min="0" max="10" value="5"></label>
+          <label>Low startup cost <input id="radar-startup" type="number" min="0" max="10" value="5"></label>
+          <label>Low ongoing effort <input id="radar-effort" type="number" min="0" max="10" value="5"></label>
+          <label>Scalability <input id="radar-scale" type="number" min="0" max="10" value="5"></label>
+          <label>Automation potential <input id="radar-automation" type="number" min="0" max="10" value="5"></label>
+          <label>Atlas fit <input id="radar-fit" type="number" min="0" max="10" value="5"></label>
+          <label>Confidence <input id="radar-confidence" type="number" min="0" max="10" value="5"></label>
+        </div>
+        <button type="submit">Add to Radar</button>
+      </form>
+      <div id="radar-list" class="radar-list"></div>
+    </section>
+
     <section class="card">
       <div class="section-heading"><div><p class="eyebrow">OPPORTUNITY ENGINE</p><h2>Portfolio Command Center</h2></div><button id="toggle-form">Add Opportunity</button></div>
       <div id="metrics" class="metrics"></div>

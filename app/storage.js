@@ -60,17 +60,100 @@ function createStorage(options = {}) {
     return value;
   }
 
+  function validateRadarCandidates(value) {
+    if (!Array.isArray(value)) throw new Error('Atlas radar candidate data must be an array.');
+    return value;
+  }
+
+  function validateDiscoveryRuns(value) {
+    if (!Array.isArray(value)) throw new Error('Atlas discovery run data must be an array.');
+    return value;
+  }
+
+  function validateTravelState(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Atlas travel data must be an object.');
+    if (!Array.isArray(value.trips)) throw new Error('Atlas travel trips must be an array.');
+    return value;
+  }
+
   function seedIfNeeded() {
     if (selectState.get('opportunities')) return;
     const seed = fs.existsSync(seedFile) ? JSON.parse(fs.readFileSync(seedFile, 'utf8')) : [];
     validateOpportunities(seed);
     upsertState.run('opportunities', JSON.stringify(seed), new Date().toISOString());
+    if (!selectState.get('radar_candidates')) upsertState.run('radar_candidates', '[]', new Date().toISOString());
+    if (!selectState.get('discovery_runs')) upsertState.run('discovery_runs', '[]', new Date().toISOString());
+    if (!selectState.get('travel')) {
+      const { emptyTravelState } = require('./travel');
+      upsertState.run('travel', JSON.stringify(emptyTravelState()), new Date().toISOString());
+    }
   }
 
   function read() {
     seedIfNeeded();
+    if (!selectState.get('radar_candidates')) upsertState.run('radar_candidates', '[]', new Date().toISOString());
     const row = selectState.get('opportunities');
     return validateOpportunities(JSON.parse(row.value));
+  }
+
+  function readRadar() {
+    seedIfNeeded();
+    if (!selectState.get('radar_candidates')) upsertState.run('radar_candidates', '[]', new Date().toISOString());
+    const row = selectState.get('radar_candidates');
+    return validateRadarCandidates(JSON.parse(row.value));
+  }
+
+  function writeRadar(value) {
+    validateRadarCandidates(value);
+    const serialized = JSON.stringify(value);
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      upsertState.run('radar_candidates', serialized, new Date().toISOString());
+      db.exec('COMMIT;');
+    } catch (error) {
+      db.exec('ROLLBACK;');
+      throw error;
+    }
+  }
+
+
+  function readDiscoveryRuns() {
+    seedIfNeeded();
+    if (!selectState.get('discovery_runs')) upsertState.run('discovery_runs', '[]', new Date().toISOString());
+    const row = selectState.get('discovery_runs');
+    return validateDiscoveryRuns(JSON.parse(row.value));
+  }
+
+  function writeDiscoveryRuns(value) {
+    validateDiscoveryRuns(value);
+    const serialized = JSON.stringify(value);
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      upsertState.run('discovery_runs', serialized, new Date().toISOString());
+      db.exec('COMMIT;');
+    } catch (error) {
+      db.exec('ROLLBACK;');
+      throw error;
+    }
+  }
+
+  function readTravel() {
+    seedIfNeeded();
+    const row = selectState.get('travel');
+    return validateTravelState(JSON.parse(row.value));
+  }
+
+  function writeTravel(value) {
+    validateTravelState(value);
+    const serialized = JSON.stringify(value);
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      upsertState.run('travel', serialized, new Date().toISOString());
+      db.exec('COMMIT;');
+    } catch (error) {
+      db.exec('ROLLBACK;');
+      throw error;
+    }
   }
 
   function pruneBackups() {
@@ -112,6 +195,9 @@ function createStorage(options = {}) {
         engine: 'sqlite',
         state_rows: Number(row.count || 0),
         opportunity_count: data.length,
+        radar_candidate_count: readRadar().length,
+        discovery_run_count: readDiscoveryRuns().length,
+        travel_trip_count: readTravel().trips.length,
         writable: fs.existsSync(dataDir) && fs.statSync(dataDir).isDirectory(),
         data_dir: dataDir,
         db_file: dbFile,
@@ -130,7 +216,7 @@ function createStorage(options = {}) {
   }
 
   seedIfNeeded();
-  return { read, write, health, backupCurrent, close, paths: { dataDir, dbFile, backupDir, seedFile, sentinelFile } };
+  return { read, write, readRadar, writeRadar, readDiscoveryRuns, writeDiscoveryRuns, readTravel, writeTravel, health, backupCurrent, close, paths: { dataDir, dbFile, backupDir, seedFile, sentinelFile } };
 }
 
 module.exports = { createStorage };

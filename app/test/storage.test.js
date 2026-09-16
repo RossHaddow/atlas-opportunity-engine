@@ -78,3 +78,17 @@ test('persistence sentinel survives storage reopen in the same data directory', 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test('Build 81 discovery run history persists in SQLite', () => {
+  const { root, storage } = tempStorage();
+  try {
+    const runs=[{run_id:'run-test',status:'Running',query:'test query'}];
+    storage.writeDiscoveryRuns(runs);
+    assert.deepEqual(storage.readDiscoveryRuns(),runs);
+    assert.equal(storage.health().discovery_run_count,1);
+  } finally {
+    storage.close();
+    fs.rmSync(root,{recursive:true,force:true});
+  }
+});
