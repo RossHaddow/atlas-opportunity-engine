@@ -9,6 +9,7 @@ const { TRAVEL_STATUSES, emptyTravelState, normalizeTravelPreferences, emptyTrip
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, "public");
 const storage = createStorage();
+let weirdThingsModulePromise;
 const STARTED_AT = Date.now();
 const APP_VERSION = require("./package.json").version;
 const VALID_STATUSES = ["Researching", "Testing", "Active", "Scaled", "Paused", "Killed"];
@@ -106,6 +107,19 @@ function readTravel() {
 
 function writeTravel(data) {
   storage.writeTravel(data);
+}
+
+async function weirdThingsModule() {
+  if (!weirdThingsModulePromise) {
+    weirdThingsModulePromise = import("./weird-things/moduleAdapter.js").then(({ WeirdThingsModule }) => {
+      return new WeirdThingsModule(storage.readModule("weird_things_tracker") || { schema_version: 1 });
+    });
+  }
+  return weirdThingsModulePromise;
+}
+
+function persistWeirdThings(module) {
+  storage.writeModule("weird_things_tracker", module.exportState());
 }
 
 const RADAR_STAGES = ["New", "Worth Investigating", "Atlas Recommended", "Ready to Test", "Dismissed", "Promoted"];
@@ -4280,6 +4294,46 @@ async function api(req, res, url) {
       auth_required: authConfig().required,
       storage: storageHealth
     });
+  }
+
+  if (url.pathname.startsWith("/api/weird-things")) {
+    const module = await weirdThingsModule();
+    const filters = {
+      category: url.searchParams.get("category") || undefined,
+      status: url.searchParams.get("status") || undefined,
+      country: url.searchParams.get("country") || undefined,
+      from: url.searchParams.get("from") || undefined,
+      to: url.searchParams.get("to") || undefined
+    };
+    if (req.method === "GET" && url.pathname === "/api/weird-things/events") return json(res, 200, { events: module.tracker.listEvents(filters) });
+    if (req.method === "GET" && url.pathname === "/api/weird-things/summary") return json(res, 200, module.tracker.getSummary());
+    if (req.method === "GET" && url.pathname === "/api/weird-things/patterns") return json(res, 200, { patterns: module.tracker.detectPatterns() });
+    if (req.method === "GET" && url.pathname === "/api/weird-things/dashboard") return json(res, 200, module.getDashboard(filters));
+    if (req.method === "GET" && url.pathname === "/api/weird-things/command-center") return json(res, 200, module.getCommandCenter());
+    if (req.method === "GET" && url.pathname === "/api/weird-things/sources") return json(res, 200, { sources: module.sources.list() });
+    if (req.method === "POST" && ["/api/weird-things/events", "/api/weird-things/intake"].includes(url.pathname)) {
+      const event = module.submitIntake(await body(req));
+      persistWeirdThings(module);
+      return json(res, 201, event);
+    }
+    const reviewMatch = url.pathname.match(/^\/api\/weird-things\/events\/([^/]+)\/review$/);
+    if (req.method === "POST" && reviewMatch) {
+      const event = module.reviewEvent(reviewMatch[1], await body(req));
+      persistWeirdThings(module);
+      return json(res, 200, event);
+    }
+    const ingestMatch = url.pathname.match(/^\/api\/weird-things\/sources\/([^/]+)\/ingest$/);
+    if (req.method === "POST" && ingestMatch) {
+      const result = module.ingestSource(ingestMatch[1], await body(req));
+      persistWeirdThings(module);
+      return json(res, 200, result);
+    }
+    if (req.method === "POST" && url.pathname === "/api/weird-things/alerts/evaluate") {
+      const alerts = module.evaluateAlerts();
+      persistWeirdThings(module);
+      return json(res, 200, { alerts });
+    }
+    return json(res, 404, { error: "Weird Things route not found." });
   }
 
 

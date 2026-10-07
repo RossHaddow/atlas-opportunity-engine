@@ -156,6 +156,25 @@ function createStorage(options = {}) {
     }
   }
 
+  function readModule(moduleId) {
+    seedIfNeeded();
+    const row = selectState.get(`module:${String(moduleId)}`);
+    return row ? JSON.parse(row.value) : null;
+  }
+
+  function writeModule(moduleId, value) {
+    const key = `module:${String(moduleId)}`;
+    const serialized = JSON.stringify(value);
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      upsertState.run(key, serialized, new Date().toISOString());
+      db.exec('COMMIT;');
+    } catch (error) {
+      db.exec('ROLLBACK;');
+      throw error;
+    }
+  }
+
   function pruneBackups() {
     const files = fs.readdirSync(backupDir)
       .filter(name => /^opportunities-.*\.json$/.test(name))
@@ -216,7 +235,7 @@ function createStorage(options = {}) {
   }
 
   seedIfNeeded();
-  return { read, write, readRadar, writeRadar, readDiscoveryRuns, writeDiscoveryRuns, readTravel, writeTravel, health, backupCurrent, close, paths: { dataDir, dbFile, backupDir, seedFile, sentinelFile } };
+  return { read, write, readRadar, writeRadar, readDiscoveryRuns, writeDiscoveryRuns, readTravel, writeTravel, readModule, writeModule, health, backupCurrent, close, paths: { dataDir, dbFile, backupDir, seedFile, sentinelFile } };
 }
 
 module.exports = { createStorage };

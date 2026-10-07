@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atlas — Weird Things Tracker</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/weird-things.css">
+</head>
+<body>
+  <main class="dashboard weird-things-page">
+    <header><p class="eyebrow">ATLAS INTELLIGENCE</p><h1>Weird Things Tracker</h1><p>Unusual events worth watching—evidence first, patterns second.</p><p><a class="atlas-workspace-link" href="/">← Back to Atlas</a></p></header>
+    <section class="card wt-intro-card"><div class="section-heading"><div><p class="eyebrow">DECISION VIEW</p><h2>What needs attention</h2></div><span id="wt-updated">Loading…</span></div><div id="wt-summary" class="wt-summary"></div><p class="wt-guardrail">⚠️ Cluster Watch identifies events that may deserve investigation. It does not establish prediction, risk, or causation.</p></section>
+    <section class="wt-grid">
+      <section class="card"><div class="section-heading"><div><p class="eyebrow">REVIEW</p><h2>Intake queue</h2></div><span id="wt-review-count">0 open</span></div><div id="wt-review-queue" class="wt-list"></div></section>
+      <section class="card"><div class="section-heading"><div><p class="eyebrow">CLUSTER WATCH</p><h2>Possible patterns</h2></div><span id="wt-pattern-count">0 found</span></div><div id="wt-patterns" class="wt-list"></div></section>
+    </section>
+    <section class="card"><div class="section-heading"><div><p class="eyebrow">CAPTURE</p><h2>Log a weird event</h2></div></div><form id="wt-intake-form" class="wt-intake-form"><input id="wt-title" required placeholder="What happened?"><select id="wt-category"><option value="weather">Weather</option><option value="geology">Geology</option><option value="animals">Animals</option><option value="space_aviation">Space / aviation</option><option value="infrastructure">Infrastructure</option><option value="public_health">Public health</option><option value="technology">Technology</option><option value="society">Society</option><option value="other">Other</option></select><input id="wt-date" type="date" required><input id="wt-country" required placeholder="Country"><input id="wt-region" placeholder="State / region"><input id="wt-source" type="url" required placeholder="Source URL"><textarea id="wt-summary-text" placeholder="What makes it unusual? What are the normal explanations?"></textarea><button type="submit">Send to review</button><span id="wt-form-status"></span></form></section>
+    <section class="card"><div class="section-heading"><div><p class="eyebrow">EVENTS</p><h2>Recent records</h2></div><span id="wt-event-count">0 records</span></div><div id="wt-events" class="wt-list"></div></section>
+  </main>
+  <script src="/weird-things.js"></script>
+</body>
+</html>
