@@ -1,37 +1,25 @@
-# Atlas Build 40 — Normalized Source Tree
+# Atlas Build 40 — Focus Execution Layer
 
 Status: COMPLETE
 
-Build 40 converts Atlas from a packed deployment artifact into a normal, inspectable repository source tree while preserving the Build 38 / v1.7.0 application payload as the source of truth.
+Build 40 closes the loop between Atlas intelligence and daily execution.
 
 ## What changed
+- Version 1.9.0.
+- Adds a persistent focus state to opportunities without introducing a separate task database.
+- Top Focus now supports **Start Focus**, **Complete for Today**, and **Defer 1 Day**.
+- Starting a focus action snapshots Atlas's current recommendation and gives that in-progress work a continuity boost so Atlas does not casually switch priorities mid-action.
+- Completing a focus action records it in focus history and removes it from the active queue for 24 hours, letting Atlas immediately promote the next best move.
+- Deferring a focus action records the defer event and temporarily removes the opportunity from the active intelligence queue.
+- Deferred/completed work automatically becomes eligible again when its hold expires.
+- Focus history is retained (latest 100 events) inside the opportunity record for future learning and auditability.
+- Adds `POST /api/opportunities/:id/focus` for the focus execution workflow.
 
-- Adds an automated source-normalization workflow.
-- Verifies the 16-part packed payload before restoration.
-- Restores the current Atlas application source from the verified payload.
-- Commits the restored application into the first-class `app/` directory on `main`.
-- Keeps the packed payload temporarily as a recovery/reference artifact so normalization is reversible.
-- Makes future Atlas builds editable as ordinary repository files rather than requiring Base64/gzip payload surgery.
-- Retains Build 39 integrity tooling as a safety net during the transition.
-
-## Source of truth
-
-Beginning with Build 40, `app/` is the maintainable application source tree for future development. The segmented `atlas34.part.*` files are legacy recovery artifacts and should not be used for new application edits.
-
-## Safety model
-
-Normalization is generated from the exact verified payload already used by Atlas. The workflow fails before writing `app/` if payload verification or restoration fails. The legacy payload remains in the repository until a later cleanup build confirms that normal-source deployment is stable.
+## Product intent
+Builds 38–39 made Atlas capable of saying what Ross should work on next. Build 40 makes that recommendation executable and creates a record of what Ross actually chose to do.
 
 ## Verification
-
-Build 40 is complete when:
-
-1. Payload integrity verification succeeds.
-2. The payload restores successfully.
-3. `app/` contains the reconstructed Atlas source files.
-4. The normalized source is committed to `main`.
-5. Future application work can target files under `app/` directly.
-
-## Application version
-
-The normalized source represents the current Atlas Build 38 / v1.7.0 application behavior. Build 40 changes repository architecture, not user-facing Atlas behavior.
+- `npm run check` passes.
+- Active focus receives a continuity priority boost.
+- Deferred work is excluded until the defer window expires.
+- Start, complete, and defer controls are mounted in the Top Focus card.
