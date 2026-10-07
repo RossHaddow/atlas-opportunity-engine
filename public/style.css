@@ -231,6 +231,9 @@ dialog { width:min(900px,94vw); max-height:92vh; overflow:auto; color:var(--text
 .radar-next-job small,.radar-next-job span{color:var(--muted,#9ca3af)}
 @media(max-width:900px){.radar-next-job{grid-column:1/-1;border-left:0;border-top:1px solid rgba(255,255,255,.09);padding:10px 0 0}}
 
+/* Workspace shell — Build 91 layout foundation */
+.atlas-workspaces{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.atlas-workspaces button,.atlas-workspaces a{display:inline-flex;align-items:center;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:999px;background:rgba(255,255,255,.03);color:#dbe7f2;text-decoration:none;font:inherit;font-size:.8rem;cursor:pointer}.atlas-workspaces button.is-active{border-color:#5ea8df;background:#17324a;color:#fff}.workspace-hidden{display:none!important}.atlas-workspace-link{color:#9dd2ff;font-weight:700}
+
 /* Travel Build 1 — Core & Decision Engine */
 .travel-intro{margin:0 0 16px;color:var(--muted,#9ca3af)}
 .travel-statuses{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}

@@ -8,9 +8,9 @@
 </head>
 <body>
   <main class="dashboard">
-    <header><p class="eyebrow">PERSONAL INTELLIGENCE & OPPORTUNITY SYSTEM</p><h1>ATLAS</h1><p><a class="atlas-workspace-link" href="/weird-things.html">Open Weird Things Tracker →</a></p></header>
+    <header><p class="eyebrow">PERSONAL INTELLIGENCE & OPPORTUNITY SYSTEM</p><h1>ATLAS</h1><nav class="atlas-workspaces" aria-label="Atlas workspaces"><button type="button" data-workspace="home">Command Center</button><button type="button" data-workspace="opportunities">Opportunities</button><button type="button" data-workspace="travel">Travel</button><a href="/weird-things.html">Weird Things</a></nav></header>
 
-    <section id="executive-briefing" class="command-center">
+    <section id="executive-briefing" class="command-center" data-workspace-section="home">
       <div class="command-header">
         <div>
           <p class="eyebrow">DAILY EXECUTIVE BRIEFING</p>
@@ -70,12 +70,12 @@
         </div>
       </div>
     </section>
-    <section id="atlas-next-moves-card" class="card">
+    <section id="atlas-next-moves-card" class="card" data-workspace-section="home">
       <div class="section-heading"><div><p class="eyebrow">ATLAS PRIORITY QUEUE</p><h2>Next Money Moves</h2></div><span id="next-moves-headline">Loading…</span></div>
       <div id="next-moves-list" class="next-moves-list"></div>
     </section>
 
-    <section id="travel-card" class="card travel-card">
+    <section id="travel-card" class="card travel-card" data-workspace-section="travel">
       <div class="section-heading">
         <div><p class="eyebrow">ATLAS TRAVEL</p><h2>Trip Command Center</h2></div>
         <span id="travel-summary">Loading travel…</span>
@@ -578,7 +578,7 @@
       <div id="travel-trip-list" class="travel-trip-list"></div>
     </section>
 
-    <section id="opportunity-radar-card" class="card radar-card">
+    <section id="opportunity-radar-card" class="card radar-card" data-workspace-section="opportunities">
       <div class="section-heading">
         <div><p class="eyebrow">OPPORTUNITY RADAR</p><h2>Candidate Pipeline</h2></div>
         <span id="radar-summary">Loading candidates…</span>
@@ -624,14 +624,14 @@
       <div id="radar-list" class="radar-list"></div>
     </section>
 
-    <section class="card">
+    <section class="card" data-workspace-section="opportunities">
       <div class="section-heading"><div><p class="eyebrow">OPPORTUNITY ENGINE</p><h2>Portfolio Command Center</h2></div><button id="toggle-form">Add Opportunity</button></div>
       <div id="metrics" class="metrics"></div>
       <div id="filters" class="filters"></div>
       <div class="dashboard-controls"><input id="opportunity-search" type="search" placeholder="Search opportunities"><label>Sort by <select id="opportunity-sort"><option value="attention">Next action</option><option value="score">Atlas score</option><option value="profit">Profit</option><option value="status">Status</option><option value="name">Name</option></select></label></div>
     </section>
 
-    <section id="testing-portfolio-card" class="card testing-portfolio-card">
+    <section id="testing-portfolio-card" class="card testing-portfolio-card" data-workspace-section="opportunities">
       <div class="section-heading">
         <div><p class="eyebrow">LIVE PRODUCT TESTS</p><h2>30-Day Test Portfolio</h2></div>
         <span id="test-portfolio-count"></span>
@@ -639,8 +639,8 @@
       <div id="test-portfolio-metrics" class="test-portfolio-metrics"></div>
       <div id="test-portfolio-list" class="test-portfolio-list"></div>
     </section>
-    <section id="attention-card" class="card attention-card"><div class="section-heading"><div><p class="eyebrow">NEEDS ATTENTION</p><h2>Action Queue</h2></div><span id="attention-count"></span></div><div id="attention-list"></div></section>
-    <section id="form-card" class="card hidden">
+    <section id="attention-card" class="card attention-card" data-workspace-section="home"><div class="section-heading"><div><p class="eyebrow">NEEDS ATTENTION</p><h2>Action Queue</h2></div><span id="attention-count"></span></div><div id="attention-list"></div></section>
+    <section id="form-card" class="card hidden" data-workspace-section="opportunities">
       <div class="section-heading"><h2 id="form-title">Add Opportunity</h2><button type="button" class="secondary hidden" id="cancel-edit">Cancel Edit</button></div>
       <form id="opportunity-form">
         <input id="name" placeholder="Opportunity name" required>
@@ -660,7 +660,7 @@
         <button type="submit" id="opportunity-submit">Save Opportunity</button>
       </form>
     </section>
-    <section id="opportunity-list" class="opportunity-list"><div class="card">Loading opportunities...</div></section>
+    <section id="opportunity-list" class="opportunity-list" data-workspace-section="opportunities"><div class="card">Loading opportunities...</div></section>
   </main>
   <dialog id="experiment-dialog">
     <form id="experiment-form">

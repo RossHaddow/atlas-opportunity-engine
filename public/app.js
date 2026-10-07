@@ -1401,6 +1401,22 @@ async function renderTravelIntelligence(){
 }
 const travelIntelligenceRefresh=document.getElementById('travel-intelligence-refresh');if(travelIntelligenceRefresh)travelIntelligenceRefresh.addEventListener('click',()=>renderTravelIntelligence());
 
+// Atlas workspace shell — keeps the daily view focused instead of one endless page.
+function selectWorkspace(workspace) {
+  const valid = ["home", "opportunities", "travel"];
+  const selected = valid.includes(workspace) ? workspace : "home";
+  document.querySelectorAll("[data-workspace-section]").forEach((section) => section.classList.toggle("workspace-hidden", section.dataset.workspaceSection !== selected));
+  document.querySelectorAll("[data-workspace]").forEach((button) => {
+    const active = button.dataset.workspace === selected;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  });
+  window.location.hash = `workspace=${selected}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+document.querySelectorAll("[data-workspace]").forEach((button) => button.addEventListener("click", () => selectWorkspace(button.dataset.workspace)));
+selectWorkspace(new URLSearchParams(window.location.hash.slice(1)).get("workspace") || "home");
+
 
 async function renderTravelWatchlist(trip){
   const summary=document.getElementById('travel-watch-summary'),board=document.getElementById('travel-watch-board'),scenarioSelect=document.getElementById('travel-watch-scenario');
