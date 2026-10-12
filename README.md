@@ -1,6 +1,6 @@
 # Atlas Opportunity Engine
 
-**Current checkpoint: Build 90 + Travel Build 8 — v1.67.0 (Trip Shortlist & Booking Decision)**
+**Current checkpoint: Atlas Build 93 + Travel Build 40 — Europe Toolkit Drill-Down Views**
 
 Recovered Opportunity Engine with Builds 1 through 10 completed.
 
@@ -432,6 +432,10 @@ Atlas now converts pending Radar evidence gaps into provider-ready research brie
 ## Build 90 — Executable Research Assist + Finding Review Gate
 
 When Research Assist and the OpenAI web-search provider are explicitly enabled, Atlas can now execute targeted validation research. Results are staged as source-backed findings requiring Accept/Reject review. Only accepted findings pass through Build 88 evidence capture; Build 86 explicit promotion approval remains authoritative. See `BUILD_90.md`.
+
+## Build 93 — Europe Toolkit Drill-Down Views
+
+Europe planning now groups its 19 modules into four focused views: Timing, Quotes & Evidence, Routes & Coordination, and Command View. The selected Europe view is preserved in the URL hash.
 
 ## Atlas Travel
 

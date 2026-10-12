@@ -287,3 +287,7 @@ dialog { width:min(900px,94vw); max-height:92vh; overflow:auto; color:var(--text
 .atlas-subnav button{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.025);color:#dbe7f2;font:inherit;font-size:.78rem;cursor:pointer}
 .atlas-subnav button.is-active{border-color:#5ea8df;background:#17324a;color:#fff}
 .travel-subnav{margin:4px 0 18px}
+
+
+/* Build 93 — Europe Toolkit drill-down */
+.europe-subnav{margin-top:-8px;margin-bottom:18px}
