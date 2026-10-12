@@ -19,6 +19,10 @@
         <span id="commandUpdated">Updating…</span>
       </div>
       <div id="commandKpis" class="command-kpis"></div>
+      <nav class="atlas-subnav" aria-label="Command Center views">
+        <button type="button" data-home-view-button="overview">Overview</button>
+        <button type="button" data-home-view-button="execution">Execution &amp; Review</button>
+      </nav>
       <section id="intelligence-command" class="intelligence-command">
         <div class="top-focus-panel">
           <div class="panel-title"><h3>Top Focus</h3><span>Atlas's #1 use of your time</span></div>
@@ -29,33 +33,33 @@
           <div id="intelligenceQueue" class="intelligence-queue"></div>
         </div>
       </section>
-      <section id="next-work-block" class="work-block-panel">
+      <section data-home-view="execution" id="next-work-block" class="work-block-panel">
         <div class="panel-title"><h3>Next Work Block</h3><span>Best executable use of the time you have</span></div>
         <div class="work-block-controls"><label>Available time <select id="workBlockMinutes"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option><option value="120">2 hours</option></select></label><button type="button" id="planWorkBlock">Plan this block</button></div>
         <div id="nextWorkBlock" class="work-block-content"></div>
       </section>
-      <section id="daily-work-plan" class="work-block-panel daily-work-plan-panel">
+      <section data-home-view="execution" id="daily-work-plan" class="work-block-panel daily-work-plan-panel">
         <div class="panel-title"><h3>Daily Work Plan</h3><span>Sequence the best work into the time you have today</span></div>
         <div class="work-block-controls"><label>Today’s work time <select id="dailyPlanMinutes"><option value="60">1 hour</option><option value="90" selected>90 min</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></label><button type="button" id="planDailyWork">Build today’s plan</button></div>
         <div id="dailyWorkPlan" class="work-block-content"></div>
       </section>
-      <section id="focus-review" class="focus-review-panel">
+      <section data-home-view="execution" id="focus-review" class="focus-review-panel">
         <div class="panel-title"><h3>Today’s Focus Review</h3><span>Execution, not just recommendations</span></div>
         <div id="focusReview" class="focus-review-content"></div>
       </section>
-      <section id="focus-scorecard" class="focus-scorecard-panel">
+      <section data-home-view="execution" id="focus-scorecard" class="focus-scorecard-panel">
         <div class="panel-title"><h3>7-Day Focus Scorecard</h3><span>Is Atlas turning into completed work?</span></div>
         <div id="focusScorecard" class="focus-scorecard-content"></div>
       </section>
-      <section id="focus-friction" class="focus-friction-panel">
+      <section data-home-view="execution" id="focus-friction" class="focus-friction-panel">
         <div class="panel-title"><h3>Execution Friction Diagnosis</h3><span>Why recommended work gets deferred</span></div>
         <div id="focusFriction" class="focus-friction-content"></div>
       </section>
-      <section id="adaptive-learning" class="adaptive-learning-panel">
+      <section data-home-view="execution" id="adaptive-learning" class="adaptive-learning-panel">
         <div class="panel-title"><h3>Adaptive Action Learning</h3><span>Are smaller actions improving follow-through?</span></div>
         <div id="adaptiveActionLearning" class="adaptive-learning-content"></div>
       </section>
-      <section id="recommendation-feedback" class="recommendation-feedback-panel">
+      <section data-home-view="execution" id="recommendation-feedback" class="recommendation-feedback-panel">
         <div class="panel-title"><h3>Recommendation Feedback</h3><span>How execution is changing near-term priority</span></div>
         <div id="recommendationFeedback" class="recommendation-feedback-content"></div>
       </section>
@@ -70,7 +74,7 @@
         </div>
       </div>
     </section>
-    <section id="atlas-next-moves-card" class="card" data-workspace-section="home">
+    <section id="atlas-next-moves-card" class="card" data-workspace-section="home" data-home-view="execution">
       <div class="section-heading"><div><p class="eyebrow">ATLAS PRIORITY QUEUE</p><h2>Next Money Moves</h2></div><span id="next-moves-headline">Loading…</span></div>
       <div id="next-moves-list" class="next-moves-list"></div>
     </section>
@@ -82,7 +86,15 @@
       </div>
       <p class="travel-intro">Plan trips from idea to completed travel. Atlas compares destination options against budget, travel burden, weather, lodging fit, experience fit, simplicity, and your saved preferences.</p>
       <div id="travel-statuses" class="travel-statuses"></div>
-      <div class="travel-grid">
+      <nav class="atlas-subnav travel-subnav" aria-label="Travel views">
+        <button type="button" data-travel-view-button="overview">Overview</button>
+        <button type="button" data-travel-view-button="plan">Plan</button>
+        <button type="button" data-travel-view-button="compare">Compare &amp; Book</button>
+        <button type="button" data-travel-view-button="on-trip">On Trip</button>
+        <button type="button" data-travel-view-button="review">Trip Review</button>
+        <button type="button" data-travel-view-button="europe">Europe Toolkit</button>
+      </nav>
+      <div class="travel-grid" data-travel-view="plan">
         <form id="travel-trip-form" class="travel-panel">
           <h3>Start a trip</h3>
           <input id="travel-name" placeholder="Trip name" required>
@@ -106,7 +118,7 @@
           <button type="submit" class="secondary">Save preferences</button>
         </form>
       </div>
-      <section class="travel-research-workspace">
+      <section class="travel-research-workspace" data-travel-view="plan">
         <div class="section-heading compact">
           <div><p class="eyebrow">TRAVEL BUILD 4</p><h3>Destination Research Workspace</h3></div>
           <span id="travel-research-status">Choose a trip</span>
@@ -153,7 +165,7 @@
           </div>
         </div>
       </section>
-      <section class="travel-flight-workspace">
+      <section class="travel-flight-workspace" data-travel-view="plan">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 5</p><h3>Flight Research Engine</h3></div><span id="travel-flight-summary">Choose a trip</span></div>
         <div class="travel-flight-grid">
           <form id="travel-flight-form" class="travel-panel">
@@ -171,7 +183,7 @@
         </div>
       </section>
 
-      <section class="travel-resort-workspace">
+      <section class="travel-resort-workspace" data-travel-view="plan">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 6</p><h3>Hotel / Resort Research Engine</h3></div><span id="travel-resort-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <form id="travel-resort-form" class="travel-panel">
@@ -192,86 +204,86 @@
           <div class="travel-panel"><h3>Resort comparison</h3><div id="travel-resort-board" class="travel-comparison-board"></div></div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 40</p><h3>Europe Planning Command View</h3></div><span id="travel-command-view-summary">One-screen Europe status</span></div><div class="travel-resort-grid"><div class="travel-panel"><button id="travel-command-view-run" type="button">Refresh command view</button></div><div class="travel-panel"><div id="travel-command-view-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 39</p><h3>Europe Evidence-Ready Decision Gate</h3></div><span id="travel-evidence-gate-summary">Can this move to verification?</span></div><div class="travel-resort-grid"><div class="travel-panel"><button id="travel-evidence-gate-run" type="button">Check decision gate</button></div><div class="travel-panel"><div id="travel-evidence-gate-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 38</p><h3>Europe Quote Quality Gate</h3></div><span id="travel-quote-quality-summary">Are quotes usable?</span></div><div class="travel-resort-grid"><div class="travel-panel"><button id="travel-quote-quality-run" type="button">Check quote quality</button></div><div class="travel-panel"><div id="travel-quote-quality-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 37</p><h3>Europe Quote Evidence Coverage</h3></div><span id="travel-quote-coverage-summary">Which parts have real quotes?</span></div><div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">A coverage check across every part of the split-trip itinerary.</p><button id="travel-quote-coverage-run" type="button">Check evidence coverage</button></div><div class="travel-panel"><div id="travel-quote-coverage-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 36</p><h3>Europe Quote-Capture Plan</h3></div><span id="travel-quote-plan-summary">Collect the right evidence once</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">A short research list for the split trip. It tells you what to price, for whom, and what facts to save—so you are not comparing incomplete quotes.</p><button id="travel-quote-plan-run" type="button">Build quote plan</button></div><div class="travel-panel"><div id="travel-quote-plan-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 35</p><h3>Europe Route Decision Brief</h3></div><span id="travel-decision-brief-summary">One clear route recommendation</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">A short decision view that pulls together the leading handoff city, timing, saved quote evidence, and the one next thing to do.</p><button id="travel-decision-brief-run" type="button">Refresh decision brief</button></div><div class="travel-panel"><div id="travel-decision-brief-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 34</p><h3>Europe Handoff Readiness</h3></div><span id="travel-handoff-readiness-summary">What still needs verifying?</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">A deliberately practical checklist for moving from a good handoff-city idea to a fully verified travel decision.</p><button id="travel-handoff-readiness-run" type="button">Check readiness</button></div><div class="travel-panel"><div id="travel-handoff-readiness-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 33</p><h3>Europe Handoff City Showdown</h3></div><span id="travel-handoff-summary">Compare the meetup-city choices</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Use the Europe trip settings above, then compare which city makes the most sense for the midpoint handoff. If you select a trip, its saved quote evidence is shown—not invented.</p><button id="travel-handoff-run" type="button">Compare handoff cities</button><div id="travel-handoff-evidence" class="travel-comparison-board"></div></div><div class="travel-panel"><h3>Handoff-city ranking</h3><div id="travel-handoff-board" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 32</p><h3>Europe Meetup Split Planner</h3></div><span id="travel-meetup-summary">Couple first, meetup second</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Shape a Europe trip around two parts: time together first, then a clean midpoint meetup with your Scotland-origin traveler.</p><div class="travel-two-col"><label>Europe area<select id="travel-meetup-profile"><option value="central_europe">Central Europe</option><option value="western_europe">Western Europe</option><option value="scandinavia">Scandinavia</option><option value="uk">United Kingdom</option></select></label><label>Total days<input id="travel-meetup-days" type="number" min="6" max="30" value="12"></label></div><label>Months to compare (comma-separated)<input id="travel-meetup-months" value="5,6,7,8,9"></label><button id="travel-meetup-run" type="button">Plan the split</button></div><div class="travel-panel"><h3>Recommended trip shape</h3><div id="travel-meetup-board" class="travel-comparison-board"></div><h3>Best handoff hubs</h3><div id="travel-meetup-hubs" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 31</p><h3>Best Time to Go</h3></div><span id="travel-best-time-summary">Planning the clearest windows</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><h3>Winter all-inclusive</h3><p class="travel-intro">A quick, seasonality-first shortlist for a 7-night winter escape. Price and availability still need dated quotes.</p><div id="travel-best-time-winter" class="travel-comparison-board"></div></div><div class="travel-panel"><h3>Europe with a Scotland meetup</h3><p class="travel-intro">Built for a couple-first trip, then a midpoint meetup with a Scotland-origin traveler for the second half.</p><div id="travel-best-time-europe" class="travel-comparison-board"></div></div></div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 30</p><h3>Quote Audit Timeline</h3></div><span id="travel-audit-summary">Evidence review history</span></div><div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Keep the evidence trail visible: staged, approved, and rejected quote records remain distinct from an actual provider reservation or booking.</p><div id="travel-audit-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 29</p><h3>Quote Evidence Inbox</h3></div><span id="travel-inbox-summary">Review staged quote evidence</span></div><div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Imported quotes remain staged until you approve them. Only approved records are added to the quote evidence used by the deal board.</p><div id="travel-inbox-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 28</p><h3>Quote Provider Readiness</h3></div><span id="travel-provider-summary">Checking provider capability</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Provider quotes are imported only when a provider is actually configured. Imported data must still be staged and reviewed before Atlas treats it as evidence.</p><div id="travel-provider-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 27</p><h3>Flexible Window Decision Review</h3></div><span id="travel-decision-summary">Evidence-guided next move</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Atlas combines quotes, targets, freshness, and observed movement into an advisory next step. Booking remains your decision.</p><div id="travel-decision-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 26</p><h3>Flexible Quote History</h3></div><span id="travel-history-summary">Capture repeated checks to see movement</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Atlas preserves the last 30 captured observations per date window. Trends show observed movement only—not a claim about why a fare changed or where it will go next.</p><div id="travel-history-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 25</p><h3>Flexible Window Alerts</h3></div><span id="travel-alert-summary">Manual quote evaluation</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Set a target total. Atlas evaluates each quote you capture and tells you whether to verify, recheck, or keep waiting.</p><div class="travel-two-col"><label>Alert label<input id="travel-alert-label" placeholder="Summer Europe target"></label><label>Target total<input id="travel-alert-target" type="number" min="1" step="1" placeholder="5000"></label></div><button id="travel-alert-add" type="button">Add price target</button><div id="travel-alert-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 24</p><h3>Flexible Quote Deal Board</h3></div><span id="travel-deal-summary">Compare dated quotes</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Atlas ranks saved date-window quotes, calculates the spread, and only calls a lead quote actionable when its evidence is both live-backed and fresh.</p><div id="travel-deal-lead" class="travel-comparison-board"></div><div id="travel-deal-board" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 23</p><h3>Flexible Date Window Search</h3></div><span id="travel-date-window-summary">Search a period, then capture dated quotes</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><div class="travel-two-col"><label>Earliest departure<input id="travel-date-window-start" type="date"></label><label>Latest departure<input id="travel-date-window-end" type="date"></label></div><div class="travel-two-col"><label>Minimum days<input id="travel-date-window-min" type="number" min="1" value="10"></label><label>Maximum days<input id="travel-date-window-max" type="number" min="1" value="14"></label></div><button id="travel-date-window-run" type="button">Find date windows</button><div id="travel-date-window-board" class="travel-comparison-board"></div></div><div class="travel-panel"><h3>Dated quote capture</h3><p class="travel-intro">Atlas only labels a quote live when it has a named source and capture time.</p><div id="travel-date-window-quotes" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="europe">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 22</p><h3>Flexible Travel Timing Explorer</h3></div><span id="travel-timing-summary">Compare periods, not fixed dates</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Rank flexible month windows by weather, daylight, crowds, and value. Europe searches also account for a meetup with a Scotland-origin traveler. Scores are planning estimates until live prices are connected.</p><div class="travel-two-col"><label>Trip type<select id="travel-timing-profile"><option value="central_europe">Central Europe</option><option value="western_europe">Western Europe</option><option value="scandinavia">Scandinavia</option><option value="uk">United Kingdom</option><option value="all_inclusive">Caribbean all-inclusive</option><option value="australia">Australia</option><option value="cruise">Cruise</option></select></label><label>Trip length<input id="travel-timing-days" type="number" min="1" value="12"></label></div><label>Months to compare (comma-separated, 1–12)<input id="travel-timing-months" value="5,6,7,8,9" placeholder="Example: 5,6,9"></label><button id="travel-timing-run" type="button">Compare timing windows</button><div id="travel-timing-windows" class="travel-comparison-board"></div></div><div class="travel-panel"><h3>MSP + Scotland meetup</h3><div id="travel-timing-hubs" class="travel-comparison-board"></div></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="plan">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 7</p><h3>Trip Package Optimizer</h3></div><span id="travel-package-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -284,7 +296,7 @@
           <div class="travel-panel"><h3>Best complete packages</h3><div id="travel-package-board" class="travel-comparison-board"></div></div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="compare">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 8</p><h3>Trip Shortlist & Booking Decision</h3></div><span id="travel-decision-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel"><h3>Final shortlist</h3><p class="travel-intro">Favorite complete packages in the optimizer above, then lock the one you want Atlas to carry forward.</p><div id="travel-shortlist-board" class="travel-comparison-board"></div></div>
@@ -292,12 +304,12 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 21</p><h3>Trip Archive & Rebook Blueprint</h3></div><span id="travel-rebook-summary">Choose a completed trip</span></div>
         <div class="travel-resort-grid"><div class="travel-panel"><p class="travel-intro">Turn a completed trip into a fresh planning starter without copying bookings, payments, or dated reservations.</p><div id="travel-rebook-board" class="travel-comparison-board"></div><button id="travel-rebook-create" type="button">Create rebook trip</button></div></div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="on-trip">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 9</p><h3>Booked Trip Operations</h3></div><span id="travel-operations-summary">Choose a booked trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -327,7 +339,7 @@
           </div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="on-trip">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 18</p><h3>Pre-Departure Command Center</h3></div><span id="travel-predeparture-summary">Choose a booked trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -347,7 +359,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="on-trip">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 19</p><h3>Live Trip Resilience Center</h3></div><span id="travel-resilience-summary">Choose a traveling trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -378,7 +390,7 @@
       </section>
 
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 20</p><h3>Trip Completion & Recovery Wrap-Up Center</h3></div><span id="travel-wrap-up-summary">Choose a traveling trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -404,7 +416,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="on-trip">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 10</p><h3>Live Trip Command Center</h3></div><span id="travel-live-summary">Choose a traveling trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -438,7 +450,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 11</p><h3>Post-Trip Review & Learning Engine</h3></div><span id="travel-review-summary">Complete the trip to teach Atlas</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -467,7 +479,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 12</p><h3>Travel Intelligence Dashboard</h3></div><span id="travel-intelligence-summary">Building travel history…</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -485,7 +497,7 @@
           </div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="plan">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 13</p><h3>Trip Scenario Planner</h3></div><span id="travel-scenario-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -508,7 +520,7 @@
           </div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 14</p><h3>Travel Watchlist & Recheck Engine</h3></div><span id="travel-watch-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -528,7 +540,7 @@
           </div>
         </div>
       </section>
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="review">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 15</p><h3>Travel Alerts & Action Queue</h3></div><span id="travel-action-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -544,7 +556,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="compare">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 16</p><h3>Decision & Booking Readiness Center</h3></div><span id="travel-readiness-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
@@ -560,7 +572,7 @@
         </div>
       </section>
 
-      <section class="travel-package-workspace">
+      <section class="travel-package-workspace" data-travel-view="compare">
         <div class="section-heading compact"><div><p class="eyebrow">TRAVEL BUILD 17</p><h3>Booking Execution & Confirmation Center</h3></div><span id="travel-booking-execution-summary">Choose a trip</span></div>
         <div class="travel-resort-grid">
           <div class="travel-panel">
