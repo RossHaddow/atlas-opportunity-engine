@@ -280,3 +280,10 @@ dialog { width:min(900px,94vw); max-height:92vh; overflow:auto; color:var(--text
 .travel-resort-workspace{margin:18px 0;padding-top:16px;border-top:1px solid rgba(255,255,255,.09)}
 .travel-resort-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);gap:12px}
 @media(max-width:900px){.travel-resort-grid{grid-template-columns:1fr}}
+
+
+/* Build 92 — drill-down navigation */
+.atlas-subnav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09)}
+.atlas-subnav button{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.025);color:#dbe7f2;font:inherit;font-size:.78rem;cursor:pointer}
+.atlas-subnav button.is-active{border-color:#5ea8df;background:#17324a;color:#fff}
+.travel-subnav{margin:4px 0 18px}

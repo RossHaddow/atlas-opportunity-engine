@@ -1402,6 +1402,28 @@ async function renderTravelIntelligence(){
 const travelIntelligenceRefresh=document.getElementById('travel-intelligence-refresh');if(travelIntelligenceRefresh)travelIntelligenceRefresh.addEventListener('click',()=>renderTravelIntelligence());
 
 // Atlas workspace shell — keeps the daily view focused instead of one endless page.
+function atlasHashParams() {
+  return new URLSearchParams(window.location.hash.slice(1));
+}
+function updateAtlasHash(key, value) {
+  const params = atlasHashParams();
+  params.set(key, value);
+  history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${params.toString()}`);
+}
+function setDrilldownView(group, view, scroll = false) {
+  const config = group === "home"
+    ? { valid: ["overview", "execution"], key: "home", selector: "[data-home-view]", buttons: "[data-home-view-button]" }
+    : { valid: ["overview", "plan", "compare", "on-trip", "review", "europe"], key: "travel", selector: "#travel-card [data-travel-view]", buttons: "[data-travel-view-button]" };
+  const selected = config.valid.includes(view) ? view : "overview";
+  document.querySelectorAll(config.selector).forEach((section) => section.classList.toggle("workspace-hidden", section.dataset[group === "home" ? "homeView" : "travelView"] !== selected));
+  document.querySelectorAll(config.buttons).forEach((button) => {
+    const active = button.dataset[group === "home" ? "homeViewButton" : "travelViewButton"] === selected;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  updateAtlasHash(config.key, selected);
+  if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
+}
 function selectWorkspace(workspace) {
   const valid = ["home", "opportunities", "travel"];
   const selected = valid.includes(workspace) ? workspace : "home";
@@ -1411,11 +1433,18 @@ function selectWorkspace(workspace) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-current", active ? "page" : "false");
   });
-  window.location.hash = `workspace=${selected}`;
+  updateAtlasHash("workspace", selected);
+  if (selected === "home") setDrilldownView("home", atlasHashParams().get("home") || "overview");
+  if (selected === "travel") setDrilldownView("travel", atlasHashParams().get("travel") || "overview");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 document.querySelectorAll("[data-workspace]").forEach((button) => button.addEventListener("click", () => selectWorkspace(button.dataset.workspace)));
-selectWorkspace(new URLSearchParams(window.location.hash.slice(1)).get("workspace") || "home");
+document.querySelectorAll("[data-home-view-button]").forEach((button) => button.addEventListener("click", () => setDrilldownView("home", button.dataset.homeViewButton)));
+document.querySelectorAll("[data-travel-view-button]").forEach((button) => button.addEventListener("click", () => setDrilldownView("travel", button.dataset.travelViewButton)));
+const atlasInitialHash = atlasHashParams();
+selectWorkspace(atlasInitialHash.get("workspace") || "home");
+setDrilldownView("home", atlasInitialHash.get("home") || "overview");
+setDrilldownView("travel", atlasInitialHash.get("travel") || "overview");
 
 
 async function renderTravelWatchlist(trip){
