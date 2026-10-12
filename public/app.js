@@ -1424,6 +1424,17 @@ function setDrilldownView(group, view, scroll = false) {
   updateAtlasHash(config.key, selected);
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
 }
+function setEuropeView(view) {
+  const valid = ["timing", "evidence", "routes", "command"];
+  const selected = valid.includes(view) ? view : "command";
+  document.querySelectorAll('#travel-card [data-europe-view]').forEach((section) => section.classList.toggle("workspace-hidden", section.dataset.europeView !== selected));
+  document.querySelectorAll("[data-europe-view-button]").forEach((button) => {
+    const active = button.dataset.europeViewButton === selected;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  updateAtlasHash("europe", selected);
+}
 function selectWorkspace(workspace) {
   const valid = ["home", "opportunities", "travel"];
   const selected = valid.includes(workspace) ? workspace : "home";
@@ -1435,16 +1446,21 @@ function selectWorkspace(workspace) {
   });
   updateAtlasHash("workspace", selected);
   if (selected === "home") setDrilldownView("home", atlasHashParams().get("home") || "overview");
-  if (selected === "travel") setDrilldownView("travel", atlasHashParams().get("travel") || "overview");
+  if (selected === "travel") {
+    setDrilldownView("travel", atlasHashParams().get("travel") || "overview");
+    setEuropeView(atlasHashParams().get("europe") || "command");
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 document.querySelectorAll("[data-workspace]").forEach((button) => button.addEventListener("click", () => selectWorkspace(button.dataset.workspace)));
 document.querySelectorAll("[data-home-view-button]").forEach((button) => button.addEventListener("click", () => setDrilldownView("home", button.dataset.homeViewButton)));
 document.querySelectorAll("[data-travel-view-button]").forEach((button) => button.addEventListener("click", () => setDrilldownView("travel", button.dataset.travelViewButton)));
+document.querySelectorAll("[data-europe-view-button]").forEach((button) => button.addEventListener("click", () => setEuropeView(button.dataset.europeViewButton)));
 const atlasInitialHash = atlasHashParams();
 selectWorkspace(atlasInitialHash.get("workspace") || "home");
 setDrilldownView("home", atlasInitialHash.get("home") || "overview");
 setDrilldownView("travel", atlasInitialHash.get("travel") || "overview");
+setEuropeView(atlasInitialHash.get("europe") || "command");
 
 
 async function renderTravelWatchlist(trip){
